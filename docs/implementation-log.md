@@ -162,4 +162,35 @@ A chronological record of what was built, when, and why.
 | `src/hooks/useGameState.ts` | Full flip cycle with lock, timer, match, timeout |
 | `src/app/page.tsx` | Wired flip handler; added temporary win banner |
 
+---
+
+## Phase 5 — Match Detection Polish
+
+**Date:** 2026-06-21
+
+### What Was Built
+
+- `useGameState` — exposes `isLocked` as a derived value (`flippedCardIds.length === 2`)
+- `Board` — accepts and forwards `isLocked` to each Card
+- `Card` — new visual state: face-down + locked = dimmed + `cursor-not-allowed`; face-down + open = hoverable + subtle scale on hover
+
+### Key Decisions
+
+**`isLocked` is derived, not stored:** Computing it from `flippedCardIds.length` at the return statement means it is always correct without manual sync. Storing it separately in `useState` would require updating it in every code path that changes `flippedCardIds`.
+
+**`disabled` prop set from `isInteractable`:** Instead of duplicating the disabled logic, `isInteractable` is derived once and used for both the `disabled` attribute and the CSS class selection. Single source of truth.
+
+**`opacity-40` on locked unflipped cards:** Strong enough to signal "not available" without making the board feel broken. The two face-up cards stay full opacity so the player's eye goes there naturally.
+
+**`hover:scale-105` on open cards:** Subtle scale on hover confirms interactability without being distracting. Only applied when the card is actually clickable.
+
+### Files Modified
+
+| File | Change |
+|---|---|
+| `src/hooks/useGameState.ts` | Added `isLocked` derived value to return |
+| `src/components/game/Board.tsx` | Accepts and forwards `isLocked` |
+| `src/components/game/Card.tsx` | Four visual states; `isInteractable` derived prop |
+| `src/app/page.tsx` | Passes `isLocked` to Board |
+
 *Future phases will append entries below this line.*

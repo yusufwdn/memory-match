@@ -12,6 +12,7 @@ export default function GamePage() {
   const {
     gameState,
     difficulty,
+    isLocked,
     handleFlipCard,
     handleNewGame,
     handleRestart,
@@ -47,6 +48,7 @@ export default function GamePage() {
         <Board
           cards={cards}
           difficulty={difficulty}
+          isLocked={isLocked}
           onCardClick={handleFlipCard}
         />
       </div>

@@ -6,16 +6,14 @@ import CardComponent from "./Card";
 type BoardProps = {
   cards: Card[];
   difficulty: Difficulty;
+  isLocked: boolean;
   onCardClick: (cardId: string) => void;
 };
 
 /**
  * Maps each difficulty to its Tailwind grid-cols class.
- *
- * These must be written as complete literal strings, not interpolated
- * (e.g. NOT `grid-cols-${n}`). Tailwind scans source files for class
- * names at build time — interpolated strings are invisible to the scanner
- * and the resulting class will not be included in the CSS bundle.
+ * Must be complete literals — not interpolated — for Tailwind's
+ * build-time scanner to include them in the CSS bundle.
  */
 const GRID_COLS: Record<Difficulty, string> = {
   easy:   "grid-cols-4",
@@ -23,17 +21,13 @@ const GRID_COLS: Record<Difficulty, string> = {
   hard:   "grid-cols-6",
 };
 
-/**
- * Maps difficulty to card size.
- * Hard mode packs 6 columns so cards must be smaller to fit the screen.
- */
 const CARD_SIZE: Record<Difficulty, "md" | "sm"> = {
   easy:   "md",
   medium: "md",
   hard:   "sm",
 };
 
-export default function Board({ cards, difficulty, onCardClick }: BoardProps) {
+export default function Board({ cards, difficulty, isLocked, onCardClick }: BoardProps) {
   return (
     <div className={`grid ${GRID_COLS[difficulty]} gap-3`}>
       {cards.map((card) => (
@@ -41,6 +35,7 @@ export default function Board({ cards, difficulty, onCardClick }: BoardProps) {
           key={card.id}
           card={card}
           size={CARD_SIZE[difficulty]}
+          isLocked={isLocked}
           onClick={() => onCardClick(card.id)}
         />
       ))}

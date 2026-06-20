@@ -260,4 +260,55 @@ In this game, the flip-back delay must be cancelled when the player starts a new
 
 ---
 
+---
+
+## Phase 5 — Derived State
+
+### What Is Derived State?
+
+Derived state is any value that can be computed from existing state. It does not need to be stored with `useState`.
+
+```typescript
+// Stored state (source of truth)
+const [flippedCardIds, setFlippedCardIds] = useState<string[]>([]);
+
+// Derived state — computed, not stored
+const isLocked = flippedCardIds.length === 2;
+const totalPairs = DIFFICULTY_CONFIG[difficulty].totalCards / 2;
+const matchPercentage = (matches / totalPairs) * 100;
+```
+
+All three derived values are always correct because they are recomputed on every render from the data that drives them.
+
+### Why Storing Derived State Is Dangerous
+
+```typescript
+// BAD — two sources of truth that can fall out of sync
+const [flippedCardIds, setFlippedCardIds] = useState([]);
+const [isLocked, setIsLocked] = useState(false);
+
+// You must now remember to call setIsLocked in every place
+// that changes flippedCardIds — miss one and the UI is wrong
+```
+
+A core React principle: **derive what you can, store only what you must.**
+
+### Single Source of Truth for Logic
+
+The `isInteractable` pattern in `Card.tsx` is worth studying:
+
+```typescript
+const isInteractable = !isMatched && !isFlipped && !isLocked;
+
+return (
+  <button
+    disabled={!isInteractable}          // controls browser behaviour
+    className={isLocked ? "dimmed" : "hoverable"}  // controls appearance
+  >
+```
+
+Rather than duplicating the condition in two places, it's derived once at the top and used everywhere. Changing the rule only requires changing one line.
+
+---
+
 *More concepts will be added as each phase is implemented.*

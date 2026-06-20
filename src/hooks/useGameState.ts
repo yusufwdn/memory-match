@@ -164,9 +164,14 @@ export function useGameState() {
 
   // ─── Return ────────────────────────────────────────────────────────────────
 
+  // isLocked is derived — not stored — because it can always be computed
+  // from flippedCardIds. Storing it separately would require manual sync.
+  const isLocked = flippedCardIds.length === 2;
+
   return {
     gameState,
     difficulty,
+    isLocked,
     handleFlipCard,
     handleNewGame,
     handleRestart,
