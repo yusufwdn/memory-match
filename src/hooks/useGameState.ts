@@ -1,4 +1,4 @@
-import { useState, useCallback, useRef } from "react";
+import { useState, useCallback, useRef, useEffect } from "react";
 import { generateCards } from "@/lib/cardUtils";
 import { checkMatch, isGameComplete, calculateScore } from "@/lib/gameLogic";
 import {
@@ -14,20 +14,19 @@ import type { Difficulty, GameScore, GameState } from "@/types/game";
 export function useGameState() {
   // ─── Core state ────────────────────────────────────────────────────────────
 
-  // Load the difficulty the player last used so the game opens on a familiar level.
-  // getLastDifficulty() reads Local Storage once — the function is only called
-  // during the lazy initializer, not on every render.
-  const [difficulty, setDifficulty] = useState<Difficulty>(
-    () => getLastDifficulty() ?? "easy"
-  );
+  // Always initialize with "easy" so the server render and the initial client
+  // render produce identical HTML. localStorage is unavailable during SSR —
+  // reading it in a lazy initializer returns different values on server vs client,
+  // which causes React to crash with a hydration mismatch error.
+  // The real persisted values are loaded in the useEffect below, after mount.
+  const [difficulty, setDifficulty] = useState<Difficulty>("easy");
   const [gameState, setGameState] = useState<GameState>(() =>
-    buildInitialState(getLastDifficulty() ?? "easy")
+    buildInitialState("easy")
   );
 
-  // Best scores loaded once on mount — updated optimistically after each win.
-  const [bestScores, setBestScores] = useState<Record<string, GameScore>>(
-    () => getBestScores()
-  );
+  // Best scores start empty so the server and first client render agree.
+  // Populated from localStorage in the useEffect below.
+  const [bestScores, setBestScores] = useState<Record<string, GameScore>>({});
 
   // Tracks whether the most recent game set a new personal best.
   const [isNewBest, setIsNewBest] = useState(false);
@@ -231,6 +230,28 @@ export function useGameState() {
     setIsNewBest(false);
     setGameKey((k) => k + 1);
   }, [difficulty]);
+
+  // ─── Load persisted data after mount ──────────────────────────────────────
+
+  // This effect runs once, on the client only, after the first render.
+  // By the time it runs, React has already hydrated the server HTML — so
+  // reading localStorage here is safe. Any state updates cause a second
+  // render, but that is fine: it's not a hydration mismatch, just a
+  // normal client-side update.
+  useEffect(() => {
+    const savedDifficulty = getLastDifficulty();
+    const savedBestScores = getBestScores();
+
+    setBestScores(savedBestScores);
+
+    if (savedDifficulty && savedDifficulty !== "easy") {
+      setDifficulty(savedDifficulty);
+      setGameState(buildInitialState(savedDifficulty));
+      setGameKey((k) => k + 1);
+    }
+  // Empty dependency array — runs exactly once after the initial render.
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   // ─── Timer ─────────────────────────────────────────────────────────────────
 
