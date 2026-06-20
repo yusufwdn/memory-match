@@ -124,4 +124,42 @@ A chronological record of what was built, when, and why.
 | `src/components/game/Card.tsx` | Size variants; polished colour states |
 | `src/app/page.tsx` | Passes difficulty to Board; polished layout |
 
+---
+
+## Phase 4 — Card Flip Interaction
+
+**Date:** 2026-06-21
+
+### What Was Built
+
+- `src/lib/gameLogic.ts` — `checkMatch(cardA, cardB)` and `isGameComplete(cards)` pure functions
+- `src/hooks/useGameState.ts` — `handleFlipCard` with full flip cycle: flip lock, timer start, match detection, flip-back timeout, `isComplete` detection
+- `src/app/page.tsx` — wires `handleFlipCard` to Board; shows temporary win banner when `isComplete` is true
+
+### How the Flip Cycle Works
+
+1. Click card A → `isFlipped: true`, `startTime` set, `flippedCardIds = [A]`
+2. Click card B → `isFlipped: true`, `moves + 1`
+   - **Match:** both cards `isMatched: true`, `isFlipped: false`, `matches + 1`, `flippedCardIds = []`
+   - **No match:** `moves + 1`, timeout queued — after 1000ms both flip back, `flippedCardIds = []`
+3. While `flippedCardIds.length === 2` — all clicks are ignored (board lock)
+
+### Key Decisions
+
+**`useRef` for timeout ID:** Changing the timeout reference should not re-render the component. `useRef` persists a value across renders without triggering re-renders.
+
+**Match computed before `setGameState`:** The match result is derived synchronously from `gameState.cards` before the state update. This makes the same result available inside the functional update AND in the timeout scheduling below — avoiding duplicate logic.
+
+**`isComplete` set in the same state update as the match:** Combining them into one update ensures React never renders a "matched but not complete" frame for the final pair.
+
+**`clearFlipTimeout` on New Game and Restart:** Without this, a pending flip-back timeout could fire after reset and corrupt the new game's card state.
+
+### Files Modified
+
+| File | Change |
+|---|---|
+| `src/lib/gameLogic.ts` | Added `checkMatch` and `isGameComplete` |
+| `src/hooks/useGameState.ts` | Full flip cycle with lock, timer, match, timeout |
+| `src/app/page.tsx` | Wired flip handler; added temporary win banner |
+
 *Future phases will append entries below this line.*

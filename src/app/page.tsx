@@ -9,8 +9,15 @@ import { useGameState } from "@/hooks/useGameState";
 import { DIFFICULTY_CONFIG } from "@/constants/game";
 
 export default function GamePage() {
-  const { gameState, difficulty, handleNewGame, handleRestart } = useGameState();
-  const { cards, moves, matches, elapsedTime } = gameState;
+  const {
+    gameState,
+    difficulty,
+    handleFlipCard,
+    handleNewGame,
+    handleRestart,
+  } = useGameState();
+
+  const { cards, moves, matches, elapsedTime, isComplete } = gameState;
   const totalPairs = DIFFICULTY_CONFIG[difficulty].totalCards / 2;
 
   return (
@@ -40,9 +47,19 @@ export default function GamePage() {
         <Board
           cards={cards}
           difficulty={difficulty}
-          onCardClick={() => {}}
+          onCardClick={handleFlipCard}
         />
       </div>
+
+      {/* Completion message — Phase 6 will turn this into a proper modal */}
+      {isComplete && (
+        <div className="bg-green-900 border border-green-700 rounded-2xl px-8 py-4 text-center">
+          <p className="text-green-300 font-bold text-lg">You won!</p>
+          <p className="text-green-400 text-sm mt-1">
+            {moves} moves · {elapsedTime}s
+          </p>
+        </div>
+      )}
 
       {/* Controls */}
       <GameControls onNewGame={() => handleNewGame()} onRestart={handleRestart} />

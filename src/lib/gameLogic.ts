@@ -1,13 +1,20 @@
+import type { Card } from "@/types/game";
+
 /**
- * gameLogic contains pure functions for game rules.
+ * Returns true if two cards share the same symbol.
  *
- * Keeping game rules in a separate file means the logic
- * can be changed or tested without touching any components.
- *
- * Phase 5 will implement:
- *   - checkMatch(cardA, cardB): returns true if both cards share the same symbol
- *   - calculateScore(moves, timeSeconds, difficulty): returns the final score
- *
- * Phase 6 will implement:
- *   - isGameComplete(cards): returns true when every card is matched
+ * This is intentionally a pure function — it only looks at what it
+ * receives and returns a result with no side effects. Pure functions
+ * are trivial to test and reason about.
  */
+export function checkMatch(cardA: Card, cardB: Card): boolean {
+  return cardA.symbol === cardB.symbol;
+}
+
+/**
+ * Returns true when every card on the board has been matched.
+ * Used to detect game completion after each successful match.
+ */
+export function isGameComplete(cards: Card[]): boolean {
+  return cards.every((card) => card.isMatched);
+}

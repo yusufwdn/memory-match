@@ -199,4 +199,65 @@ This pattern appears constantly in real-world React component libraries.
 
 ---
 
+---
+
+## Phase 4 — useRef and Functional State Updates
+
+### useRef
+
+`useRef` creates a container that holds a value across renders. Unlike `useState`, changing a ref does **not** trigger a re-render.
+
+```typescript
+const flipTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+```
+
+You read and write the value via `.current`:
+
+```typescript
+flipTimeoutRef.current = setTimeout(() => { ... }, 1000);
+clearTimeout(flipTimeoutRef.current);
+```
+
+**When to use `useRef` instead of `useState`:**
+- You need to hold a value (timeout ID, DOM element, previous value)
+- Changing that value does not need to update the screen
+- You need it to persist between renders
+
+### Functional State Updates
+
+When your new state depends on the previous state, always use the function form:
+
+```typescript
+// WRONG — may read stale state if React batches updates
+setGameState({ ...gameState, moves: gameState.moves + 1 });
+
+// RIGHT — `prev` is always the most recent committed state
+setGameState((prev) => ({ ...prev, moves: prev.moves + 1 }));
+```
+
+React can batch multiple `setState` calls together. When that happens, the value of `gameState` captured in the closure may be one or more updates behind. The functional form `prev => ...` always gets the freshest value.
+
+### Board Lock Pattern
+
+The flip lock is a simple guard at the top of the handler:
+
+```typescript
+if (flippedCardIds.length === 2) return;
+```
+
+This is called "early return" or "guard clause." Instead of wrapping the entire function in an `if`, you bail out immediately when the condition isn't met. The remaining code is less indented and easier to read.
+
+### setTimeout and Cleanup
+
+`setTimeout` schedules a function to run after a delay. It returns an ID you can use to cancel it:
+
+```typescript
+const id = setTimeout(() => { ... }, 1000);
+clearTimeout(id); // cancels before it fires
+```
+
+In this game, the flip-back delay must be cancelled when the player starts a new game — otherwise the old timeout fires on the new board and flips cards that shouldn't be flipped.
+
+---
+
 *More concepts will be added as each phase is implemented.*

@@ -1,65 +1,175 @@
-import { useState, useCallback } from "react";
+import { useState, useCallback, useRef } from "react";
 import { generateCards } from "@/lib/cardUtils";
-import type { Card, Difficulty, GameState } from "@/types/game";
+import { checkMatch, isGameComplete } from "@/lib/gameLogic";
+import { FLIP_BACK_DELAY_MS } from "@/constants/game";
+import type { Difficulty, GameState } from "@/types/game";
 
-/**
- * useGameState is the single owner of all game logic and state.
- *
- * It returns:
- *   - gameState: the current state of the game (cards, moves, etc.)
- *   - difficulty: the active difficulty setting
- *   - handlers: functions components call to trigger state changes
- *
- * Components never modify state directly — they always call a handler.
- * This keeps the data flow predictable and easy to debug.
- */
 export function useGameState() {
-  // ─── Difficulty ─────────────────────────────────────────────────────────────
+  // ─── Core state ────────────────────────────────────────────────────────────
 
-  // useState returns a pair: [currentValue, setterFunction].
-  // When you call the setter, React re-renders any component using this value.
   const [difficulty, setDifficulty] = useState<Difficulty>("easy");
-
-  // ─── Game State ──────────────────────────────────────────────────────────────
-
-  // The full game state is stored as a single object.
-  // Grouping related state together makes it easier to reset all at once.
   const [gameState, setGameState] = useState<GameState>(() =>
     buildInitialState("easy")
   );
 
-  // ─── Actions ─────────────────────────────────────────────────────────────────
-
   /**
-   * Starts a brand new game with a freshly generated card set.
-   * Called when the player clicks "New Game".
+   * Tracks the IDs of the cards currently face-up but not yet resolved.
+   * Can hold 0, 1, or 2 IDs. When it holds 2, the board is locked.
    *
-   * useCallback wraps the function so React doesn't recreate it
-   * on every render — only when 'difficulty' changes.
-   * This is a performance optimisation, but also a good habit.
+   * This lives outside GameState intentionally — it is internal flip
+   * logic, not part of the persisted game record (score, moves, etc.).
    */
-  const handleNewGame = useCallback((newDifficulty?: Difficulty) => {
-    const activeDifficulty = newDifficulty ?? difficulty;
-    setDifficulty(activeDifficulty);
-    setGameState(buildInitialState(activeDifficulty));
-  }, [difficulty]);
+  const [flippedCardIds, setFlippedCardIds] = useState<string[]>([]);
 
   /**
-   * Restarts the current game with a new shuffle of the same difficulty.
-   * The card symbols stay the same but their positions are reshuffled.
-   * Called when the player clicks "Restart".
+   * Stores the timeout ID for the flip-back delay.
+   *
+   * useRef is used instead of useState because changing this value
+   * should NOT trigger a re-render — it's just a handle we need
+   * so we can cancel the timeout if the player starts a new game
+   * before the delay finishes.
    */
+  const flipTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  // ─── Helpers ───────────────────────────────────────────────────────────────
+
+  function clearFlipTimeout() {
+    if (flipTimeoutRef.current) {
+      clearTimeout(flipTimeoutRef.current);
+      flipTimeoutRef.current = null;
+    }
+  }
+
+  // ─── Flip card ─────────────────────────────────────────────────────────────
+
+  const handleFlipCard = useCallback(
+    (cardId: string) => {
+      // Board is locked while two unmatched cards are visible.
+      // Prevents the player from flipping a third card mid-evaluation.
+      if (flippedCardIds.length === 2) return;
+
+      // Validate the clicked card against the current state.
+      // We read from gameState.cards here so we can use the result
+      // both inside setGameState and in the flip-back timeout below.
+      const card = gameState.cards.find((c) => c.id === cardId);
+      if (!card || card.isMatched || card.isFlipped) return;
+
+      const isSecondFlip = flippedCardIds.length === 1;
+
+      // Compute the match check now, synchronously, using current state.
+      // We do it here (outside setGameState) so the result is available
+      // for both the state update AND the timeout scheduling below.
+      let isMatch = false;
+      if (isSecondFlip) {
+        const firstCard = gameState.cards.find((c) => c.id === flippedCardIds[0])!;
+        isMatch = checkMatch(firstCard, card);
+      }
+
+      // ── Update game state ─────────────────────────────────────────────────
+
+      setGameState((prev) => {
+        // Flip the clicked card face-up
+        const withFlipped = prev.cards.map((c) =>
+          c.id === cardId ? { ...c, isFlipped: true } : c
+        );
+
+        // Start the timer on the very first card flip of the game.
+        // null means "not started yet"; we set it once and never overwrite.
+        const startTime = prev.startTime ?? Date.now();
+
+        // First flip — just reveal the card and start the clock
+        if (!isSecondFlip) {
+          return { ...prev, cards: withFlipped, startTime };
+        }
+
+        // Second flip — match confirmed
+        if (isMatch) {
+          const withMatched = withFlipped.map((c) =>
+            c.id === cardId || c.id === flippedCardIds[0]
+              ? { ...c, isFlipped: false, isMatched: true }
+              : c
+          );
+          return {
+            ...prev,
+            startTime,
+            cards: withMatched,
+            moves: prev.moves + 1,
+            matches: prev.matches + 1,
+            // Check completion here so the win state is set in the same update
+            isComplete: isGameComplete(withMatched),
+          };
+        }
+
+        // Second flip — no match (flip-back is scheduled below)
+        return {
+          ...prev,
+          startTime,
+          cards: withFlipped,
+          moves: prev.moves + 1,
+        };
+      });
+
+      // ── Update flippedCardIds and schedule flip-back ───────────────────────
+
+      if (!isSecondFlip) {
+        setFlippedCardIds([cardId]);
+        return;
+      }
+
+      if (isMatch) {
+        // Cards are matched — clear the tracking list immediately
+        setFlippedCardIds([]);
+      } else {
+        // No match — schedule the flip-back after the delay
+        clearFlipTimeout();
+        const firstId = flippedCardIds[0];
+
+        flipTimeoutRef.current = setTimeout(() => {
+          setGameState((prev) => ({
+            ...prev,
+            cards: prev.cards.map((c) =>
+              c.id === firstId || c.id === cardId
+                ? { ...c, isFlipped: false }
+                : c
+            ),
+          }));
+          setFlippedCardIds([]);
+        }, FLIP_BACK_DELAY_MS);
+      }
+    },
+    [flippedCardIds, gameState.cards]
+  );
+
+  // ─── New game / Restart ────────────────────────────────────────────────────
+
+  const handleNewGame = useCallback(
+    (newDifficulty?: Difficulty) => {
+      // Cancel any pending flip-back before resetting the board.
+      // Without this, the timeout could fire after the reset and corrupt
+      // the new game's state.
+      clearFlipTimeout();
+      const activeDifficulty = newDifficulty ?? difficulty;
+      setDifficulty(activeDifficulty);
+      setGameState(buildInitialState(activeDifficulty));
+      setFlippedCardIds([]);
+    },
+    [difficulty]
+  );
+
   const handleRestart = useCallback(() => {
+    clearFlipTimeout();
     setGameState(buildInitialState(difficulty));
+    setFlippedCardIds([]);
   }, [difficulty]);
+
+  // ─── Return ────────────────────────────────────────────────────────────────
 
   return {
     gameState,
     difficulty,
+    handleFlipCard,
     handleNewGame,
     handleRestart,
-    // setGameState is exposed so Phase 4 (flip logic) can update cards.
-    setGameState,
   };
 }
 
@@ -67,13 +177,6 @@ export function useGameState() {
 // HELPERS
 // ─────────────────────────────────────────────────────────────────────────────
 
-/**
- * Builds the initial GameState for a given difficulty.
- *
- * This is a plain function (not a hook) because it has no side effects
- * and doesn't call any React hooks. It's extracted here so both
- * handleNewGame and the initial useState call can reuse it.
- */
 function buildInitialState(difficulty: Difficulty): GameState {
   return {
     cards: generateCards(difficulty),
