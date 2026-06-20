@@ -96,4 +96,32 @@ A chronological record of what was built, when, and why.
 | `src/components/hud/MatchCounter.tsx` | Accepts `matches` and `totalPairs` props |
 | `src/components/hud/Timer.tsx` | Accepts `elapsedTime` prop; formats as MM:SS |
 
+---
+
+## Phase 3 — Board Rendering
+
+**Date:** 2026-06-21
+
+### What Was Built
+
+- `Board.tsx` — difficulty-aware grid columns via a static lookup map (`GRID_COLS`)
+- `Card.tsx` — size variants (`md` / `sm`) so hard mode cards fit 6 columns
+- `page.tsx` — polished layout: dark card containers, dividers in HUD, difficulty label under title
+
+### Key Decisions
+
+**Static lookup map instead of dynamic Tailwind interpolation:** Tailwind scans source at build time. Interpolated strings like `` `grid-cols-${n}` `` are invisible to the scanner and silently fail. All class names must be literal strings.
+
+**Size passed as a prop to Card:** The board knows the difficulty; each card should not need to know it. The board translates difficulty → size and passes that down — cleaner separation of concerns.
+
+**`bg-gray-950` for the page background:** Slightly darker than `bg-gray-900` (used for the board/HUD panels) creates visible depth without a heavy drop shadow.
+
+### Files Modified
+
+| File | Change |
+|---|---|
+| `src/components/game/Board.tsx` | Difficulty-aware grid; passes size to Card |
+| `src/components/game/Card.tsx` | Size variants; polished colour states |
+| `src/app/page.tsx` | Passes difficulty to Board; polished layout |
+
 *Future phases will append entries below this line.*

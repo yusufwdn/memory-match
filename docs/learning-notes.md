@@ -145,4 +145,58 @@ By putting logic in a hook instead of a component, the logic becomes:
 
 ---
 
+---
+
+## Phase 3 — Tailwind Dynamic Classes
+
+### The Problem
+
+Tailwind CSS works by scanning your source files at build time to find every class name you use. It then only includes those classes in the final CSS bundle — this is why Tailwind files are tiny.
+
+The side effect: if a class name only exists as a string at runtime (not visible in the source), Tailwind won't include it.
+
+### Wrong Approach
+
+```typescript
+// Tailwind never sees "grid-cols-4" or "grid-cols-6" as literals
+const cols = difficulty === "hard" ? 6 : 4;
+return <div className={`grid-cols-${cols}`}>
+```
+
+This silently fails — the style is missing and no error is thrown.
+
+### Right Approach
+
+```typescript
+// All possible values are visible to Tailwind's scanner
+const GRID_COLS = {
+  easy:   "grid-cols-4",
+  medium: "grid-cols-4",
+  hard:   "grid-cols-6",
+};
+
+return <div className={`grid ${GRID_COLS[difficulty]}`}>
+```
+
+Every class name is a complete literal string. Tailwind finds them all.
+
+### Variant Props Pattern
+
+When a component needs to look different based on context, a `variant` or `size` prop with a lookup map is the standard Tailwind pattern:
+
+```typescript
+const SIZE_CLASSES = {
+  md: "w-16 h-16 text-2xl",
+  sm: "w-12 h-12 text-xl",
+};
+
+function Card({ size = "md" }) {
+  return <button className={SIZE_CLASSES[size]}>...</button>;
+}
+```
+
+This pattern appears constantly in real-world React component libraries.
+
+---
+
 *More concepts will be added as each phase is implemented.*

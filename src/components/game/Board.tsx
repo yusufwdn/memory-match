@@ -1,27 +1,46 @@
 "use client";
 
-import type { Card } from "@/types/game";
+import type { Card, Difficulty } from "@/types/game";
 import CardComponent from "./Card";
 
 type BoardProps = {
   cards: Card[];
+  difficulty: Difficulty;
   onCardClick: (cardId: string) => void;
 };
 
 /**
- * Board renders the grid of cards.
+ * Maps each difficulty to its Tailwind grid-cols class.
  *
- * The grid uses CSS Grid with auto-fit columns so the layout adapts
- * to the number of cards. Phase 3 will refine this into a proper
- * difficulty-aware grid (4×3, 4×4, 6×4).
+ * These must be written as complete literal strings, not interpolated
+ * (e.g. NOT `grid-cols-${n}`). Tailwind scans source files for class
+ * names at build time — interpolated strings are invisible to the scanner
+ * and the resulting class will not be included in the CSS bundle.
  */
-export default function Board({ cards, onCardClick }: BoardProps) {
+const GRID_COLS: Record<Difficulty, string> = {
+  easy:   "grid-cols-4",
+  medium: "grid-cols-4",
+  hard:   "grid-cols-6",
+};
+
+/**
+ * Maps difficulty to card size.
+ * Hard mode packs 6 columns so cards must be smaller to fit the screen.
+ */
+const CARD_SIZE: Record<Difficulty, "md" | "sm"> = {
+  easy:   "md",
+  medium: "md",
+  hard:   "sm",
+};
+
+export default function Board({ cards, difficulty, onCardClick }: BoardProps) {
   return (
-    <div className="grid grid-cols-4 gap-3">
+    <div className={`grid ${GRID_COLS[difficulty]} gap-3`}>
       {cards.map((card) => (
         <CardComponent
           key={card.id}
           card={card}
+          size={CARD_SIZE[difficulty]}
           onClick={() => onCardClick(card.id)}
         />
       ))}

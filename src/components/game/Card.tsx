@@ -2,26 +2,35 @@
 
 import type { Card } from "@/types/game";
 
+type CardSize = "md" | "sm";
+
 type CardProps = {
   card: Card;
+  size?: CardSize;
   onClick: () => void;
+};
+
+/**
+ * Size classes defined as literals so Tailwind includes them in the bundle.
+ * "md" is the default (easy/medium). "sm" is used in hard mode (6 columns).
+ */
+const SIZE_CLASSES: Record<CardSize, string> = {
+  md: "w-16 h-16 text-2xl",
+  sm: "w-12 h-12 text-xl",
 };
 
 /**
  * Card renders a single card on the board.
  *
  * Visual states:
- *   - Face-down (default): shows a question mark, dark background
- *   - Face-up (isFlipped): shows the symbol, lighter background
- *   - Matched (isMatched): shows the symbol, green tint — permanently visible
+ *   face-down  → dark gray,  shows "?"
+ *   face-up    → indigo,     shows symbol
+ *   matched    → green,      shows symbol, disabled
  *
- * Phase 10 will replace this with a Framer Motion 3D flip animation.
- * For now the state change is instant (no transition).
+ * Phase 10 will add a Framer Motion 3D flip animation between states.
  */
-export default function Card({ card, onClick }: CardProps) {
+export default function Card({ card, size = "md", onClick }: CardProps) {
   const { symbol, isFlipped, isMatched } = card;
-
-  // A matched card cannot be clicked again.
   const isVisible = isFlipped || isMatched;
 
   return (
@@ -29,14 +38,16 @@ export default function Card({ card, onClick }: CardProps) {
       onClick={onClick}
       disabled={isMatched}
       className={`
-        w-16 h-16 rounded-xl text-2xl font-bold
+        ${SIZE_CLASSES[size]}
+        rounded-xl font-bold
         flex items-center justify-center
         transition-colors duration-150
+        select-none
         ${isMatched
-          ? "bg-green-800 cursor-default"
+          ? "bg-green-800 cursor-default text-green-200"
           : isFlipped
-            ? "bg-indigo-700"
-            : "bg-gray-700 hover:bg-gray-600 cursor-pointer"
+            ? "bg-indigo-600 text-white shadow-lg shadow-indigo-500/30"
+            : "bg-gray-700 hover:bg-gray-600 text-gray-400 cursor-pointer"
         }
       `}
     >
