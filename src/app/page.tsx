@@ -59,11 +59,12 @@ export default function GamePage() {
       <GameControls onNewGame={() => handleNewGame()} onRestart={handleRestart} />
 
       {/* Completion modal — rendered on top of everything when game is won */}
-      {isComplete && (
+      {isComplete && gameState.score !== null && (
         <GameComplete
           moves={moves}
           elapsedTime={elapsedTime}
           totalPairs={totalPairs}
+          score={gameState.score}
           difficultyLabel={config.label}
           onPlayAgain={handleRestart}
           onNewGame={() => handleNewGame()}

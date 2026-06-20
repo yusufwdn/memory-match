@@ -6,6 +6,7 @@ type GameCompleteProps = {
   moves: number;
   elapsedTime: number; // seconds
   totalPairs: number;
+  score: number;
   difficultyLabel: string;
   onPlayAgain: () => void;
   onNewGame: () => void;
@@ -36,6 +37,7 @@ export default function GameComplete({
   moves,
   elapsedTime,
   totalPairs,
+  score,
   difficultyLabel,
   onPlayAgain,
   onNewGame,
@@ -53,9 +55,17 @@ export default function GameComplete({
         <h2 className="text-2xl font-extrabold text-white mb-1">
           You Won!
         </h2>
-        <p className="text-sm text-gray-400 mb-8 uppercase tracking-widest">
+        <p className="text-sm text-gray-400 mb-4 uppercase tracking-widest">
           {difficultyLabel} Mode
         </p>
+
+        {/* Score — the headline number */}
+        <div className="bg-indigo-950 border border-indigo-800 rounded-2xl py-4 mb-6">
+          <p className="text-4xl font-extrabold text-indigo-300 tabular-nums">
+            {score.toLocaleString()}
+          </p>
+          <p className="text-xs text-indigo-400 mt-1 uppercase tracking-widest">Score</p>
+        </div>
 
         {/* Stats grid */}
         <div className="grid grid-cols-3 gap-4 mb-8">

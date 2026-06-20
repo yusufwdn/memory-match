@@ -437,4 +437,54 @@ If `setInterval` fires 50ms late every tick, the increment approach adds ~3 seco
 
 ---
 
+---
+
+## Phase 8 — null as Intentional Absence
+
+### null vs 0
+
+`null` and `0` are both "empty-looking" but they mean different things:
+
+| Value | Meaning |
+|---|---|
+| `score = 0` | The game was played and the score is zero |
+| `score = null` | The game has not been completed yet |
+
+Using `null` makes the distinction explicit and TypeScript enforces it. If you try to display `score` without checking for null first, TypeScript gives a type error — it won't let you treat "not set yet" the same as a real number.
+
+```typescript
+// TypeScript error: score might be null
+<p>{gameState.score.toLocaleString()}</p>
+
+// Correct: check first
+{gameState.score !== null && (
+  <p>{gameState.score.toLocaleString()}</p>
+)}
+```
+
+This pattern — using `null` to represent "intentionally absent" — is one of the most common and useful TypeScript idioms.
+
+### Pure Functions for Business Logic
+
+`calculateScore` is a pure function in `gameLogic.ts`:
+
+```typescript
+export function calculateScore(
+  moves: number,
+  elapsedTime: number,
+  difficulty: Difficulty,
+  totalPairs: number
+): number { ... }
+```
+
+It takes inputs, returns an output, touches nothing else. Benefits:
+
+- **Testable:** call it with known inputs, check the output — no setup needed
+- **Predictable:** same inputs always produce the same output
+- **Moveable:** could be used in a server, a test, or a different UI without changes
+
+The rule: if it's a calculation, it belongs in `lib/`, not in a hook or component.
+
+---
+
 *More concepts will be added as each phase is implemented.*

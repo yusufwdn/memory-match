@@ -60,6 +60,12 @@ export type GameState = {
 
   /** Total elapsed seconds. Updated every second by the timer. */
   elapsedTime: number;
+
+  /**
+   * Final score. Null until the game is complete.
+   * Calculated once when isComplete is set to true.
+   */
+  score: number | null;
 };
 
 // ─────────────────────────────────────────────────────────────────────────────

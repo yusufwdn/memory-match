@@ -1,8 +1,8 @@
 import { useState, useCallback, useRef } from "react";
 import { generateCards } from "@/lib/cardUtils";
-import { checkMatch, isGameComplete } from "@/lib/gameLogic";
+import { checkMatch, isGameComplete, calculateScore } from "@/lib/gameLogic";
 import { useTimer } from "@/hooks/useTimer";
-import { FLIP_BACK_DELAY_MS } from "@/constants/game";
+import { FLIP_BACK_DELAY_MS, DIFFICULTY_CONFIG } from "@/constants/game";
 import type { Difficulty, GameState } from "@/types/game";
 
 export function useGameState() {
@@ -90,14 +90,23 @@ export function useGameState() {
               ? { ...c, isFlipped: false, isMatched: true }
               : c
           );
+          const newMoves = prev.moves + 1;
+          const newMatches = prev.matches + 1;
+          const complete = isGameComplete(withMatched);
+          const totalPairs = DIFFICULTY_CONFIG[difficulty].totalCards / 2;
+
           return {
             ...prev,
             startTime,
             cards: withMatched,
-            moves: prev.moves + 1,
-            matches: prev.matches + 1,
-            // Check completion here so the win state is set in the same update
-            isComplete: isGameComplete(withMatched),
+            moves: newMoves,
+            matches: newMatches,
+            isComplete: complete,
+            // Score is calculated in the same update so no intermediate
+            // state exists where isComplete is true but score is null.
+            score: complete
+              ? calculateScore(newMoves, prev.elapsedTime, difficulty, totalPairs)
+              : null,
           };
         }
 
@@ -197,5 +206,6 @@ function buildInitialState(difficulty: Difficulty): GameState {
     isComplete: false,
     startTime: null,
     elapsedTime: 0,
+    score: null,
   };
 }

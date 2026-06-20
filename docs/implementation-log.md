@@ -257,4 +257,55 @@ The board receives `isLocked || isComplete` — the `||` means: lock the board e
 | `src/hooks/useTimer.ts` | Implemented timer with useEffect + setInterval |
 | `src/hooks/useGameState.ts` | Calls useTimer; imports it |
 
+---
+
+## Phase 8 — Scoring System
+
+**Date:** 2026-06-21
+
+### What Was Built
+
+- `src/types/game.ts` — added `score: number | null` to `GameState`
+- `src/constants/game.ts` — added `MOVE_PENALTY`, `TIME_PENALTY`, `DIFFICULTY_MULTIPLIER`
+- `src/lib/gameLogic.ts` — implemented `calculateScore(moves, elapsedTime, difficulty, totalPairs)`
+- `src/hooks/useGameState.ts` — calls `calculateScore` in the same state update that sets `isComplete`
+- `src/components/game/GameComplete.tsx` — displays score as the headline number above the stats grid
+
+### Scoring Formula
+
+```
+score = BASE_SCORE × DIFFICULTY_MULTIPLIER[difficulty]
+      − max(0, moves − totalPairs) × MOVE_PENALTY
+      − elapsedTime × TIME_PENALTY
+      (clamped to 0)
+```
+
+| Variable | Value |
+|---|---|
+| BASE_SCORE | 1000 |
+| MOVE_PENALTY | 10 per extra move |
+| TIME_PENALTY | 2 per second |
+| Easy multiplier | ×1.0 |
+| Medium multiplier | ×1.5 |
+| Hard multiplier | ×2.0 |
+
+### Key Decisions
+
+**Score is `null` before completion:** Using `null` (not `0`) makes the "game not finished" state explicit and distinguishable from a legitimately zero score.
+
+**Calculated in the same update as `isComplete`:** No render where the game is won but the score is missing. `page.tsx` guards with `gameState.score !== null` before mounting `GameComplete`.
+
+**`toLocaleString()` for display:** Formats numbers with thousands separators (e.g. `1,580` not `1580`). One method call, works in every locale.
+
+### Files Modified
+
+| File | Change |
+|---|---|
+| `src/types/game.ts` | Added `score: number \| null` |
+| `src/constants/game.ts` | Added scoring constants |
+| `src/lib/gameLogic.ts` | Added `calculateScore` |
+| `src/hooks/useGameState.ts` | Calls `calculateScore` on completion; `score: null` in initial state |
+| `src/components/game/GameComplete.tsx` | Displays score |
+| `src/app/page.tsx` | Passes score; guards mount with `score !== null` |
+
 *Future phases will append entries below this line.*

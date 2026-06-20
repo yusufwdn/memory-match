@@ -1,4 +1,5 @@
 import type { Difficulty, DifficultyConfig } from "@/types/game";
+// Re-export Difficulty so DIFFICULTY_MULTIPLIER can use it inline
 
 // ─────────────────────────────────────────────────────────────────────────────
 // SYMBOLS
@@ -68,7 +69,30 @@ export const STORAGE_KEYS = {
 // ─────────────────────────────────────────────────────────────────────────────
 
 /**
- * Base score awarded for completing a game.
- * Bonuses for speed and low move count are added on top.
+ * Base score for a perfect game on easy difficulty.
+ * Hard mode doubles this via DIFFICULTY_MULTIPLIER.
  */
 export const BASE_SCORE = 1000;
+
+/**
+ * Points deducted per move beyond the minimum (totalPairs).
+ * The minimum moves to complete a game equals the number of pairs —
+ * one successful match per attempt with no misses.
+ */
+export const MOVE_PENALTY = 10;
+
+/**
+ * Points deducted per second of elapsed time.
+ * Keeps games fast without making speed overwhelming.
+ */
+export const TIME_PENALTY = 2;
+
+/**
+ * Score multiplier per difficulty.
+ * Hard mode is worth twice as much as easy for the same quality of play.
+ */
+export const DIFFICULTY_MULTIPLIER: Record<Difficulty, number> = {
+  easy:   1.0,
+  medium: 1.5,
+  hard:   2.0,
+};
