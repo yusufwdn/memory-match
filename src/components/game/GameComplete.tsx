@@ -1,5 +1,6 @@
 "use client";
 
+import { motion } from "framer-motion";
 import Button from "@/components/ui/Button";
 import type { GameScore } from "@/types/game";
 
@@ -51,10 +52,20 @@ export default function GameComplete({
 }: GameCompleteProps) {
   return (
     // Backdrop: fixed overlay covering the whole viewport
-    <div className="fixed inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+    <motion.div
+      className="fixed inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center z-50 p-4"
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
+      transition={{ duration: 0.25 }}
+    >
 
-      {/* Modal card */}
-      <div className="bg-gray-900 border border-gray-700 rounded-3xl p-8 w-full max-w-sm text-center shadow-2xl">
+      {/* Modal card — slides up and fades in */}
+      <motion.div
+        className="bg-gray-900 border border-gray-700 rounded-3xl p-8 w-full max-w-sm text-center shadow-2xl"
+        initial={{ opacity: 0, y: 40, scale: 0.95 }}
+        animate={{ opacity: 1, y: 0, scale: 1 }}
+        transition={{ type: "spring", stiffness: 300, damping: 25, delay: 0.1 }}
+      >
 
         {/* Trophy */}
         <div className="text-6xl mb-4">🏆</div>
@@ -116,7 +127,7 @@ export default function GameComplete({
           </Button>
         </div>
 
-      </div>
-    </div>
+      </motion.div>
+    </motion.div>
   );
 }

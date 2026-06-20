@@ -369,4 +369,44 @@ score = BASE_SCORE × DIFFICULTY_MULTIPLIER[difficulty]
 | `docs/state-management.md` | Added Local Storage section |
 | `docs/architecture.md` | Updated data flow diagram |
 
+---
+
+## Phase 10 — Animations
+
+**Date:** 2026-06-21
+
+### What Was Built
+
+- Installed `framer-motion`
+- `src/components/game/Card.tsx` — full rewrite with 3D flip animation:
+  - Three-layer structure: perspective container → rotating `motion.div` → two faces
+  - `rotateY: 0` (face-down) ↔ `rotateY: 180` (face-up/matched)
+  - Spring transition: `stiffness: 260, damping: 20` — slight overshoot for physical feel
+  - Matched "pop" keyframe: `scale: [1, 1.12, 1]` when `isMatched` becomes true
+- `src/components/game/GameComplete.tsx` — modal entrance animation:
+  - Backdrop fades in: `opacity: 0 → 1`
+  - Modal card slides up: `y: 40 → 0`, `scale: 0.95 → 1`, with 100ms delay after backdrop
+
+### Key Decisions
+
+**`transformStyle: "preserve-3d"` on the rotating container:** Required for the two card faces to exist in 3D space. Without it, the browser flattens the children and the flip looks broken (no depth, both faces visible).
+
+**`perspective` on the outer wrapper:** Perspective must be set on the *parent* of the rotating element to work correctly. Setting it on the element itself flattens the effect.
+
+**Pre-rotating the front face 180°:** Both faces share the same physical space. The front face starts facing backward (invisible). It only becomes visible when the container has rotated far enough that the combined angles point it toward the viewer.
+
+**Spring instead of `tween`:** `tween` (linear or eased) would look mechanical. Spring gives the card a tiny overshoot that reads as physical mass — the same reason real cards don't stop dead on a table.
+
+**`scale` keyframe array on matched:** `[1, 1.12, 1]` is a Framer Motion keyframe sequence — it passes through each value in order. A single `scale: 1.1` with `yoyo` repeat would also work but keyframes are more explicit about intent.
+
+### Files Modified
+
+| File | Change |
+|---|---|
+| `package.json` / `node_modules` | Added `framer-motion` |
+| `src/components/game/Card.tsx` | Full rewrite — 3D flip animation |
+| `src/components/game/GameComplete.tsx` | Backdrop fade + modal slide-up entrance |
+| `docs/learning-notes.md` | Phase 10 — Animation and Framer Motion |
+| `docs/implementation-log.md` | This entry |
+
 *Future phases will append entries below this line.*

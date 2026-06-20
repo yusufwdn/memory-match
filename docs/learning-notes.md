@@ -561,4 +561,82 @@ The logic stays in the component because it is display logic — which text and 
 
 ---
 
+---
+
+## Phase 10 — Animation and Framer Motion
+
+### Why Animate?
+
+Animation does two things beyond looking nice:
+1. **Communicates state changes** — a flip shows the player something happened; without it, the card just changes color, which is easy to miss
+2. **Feels physical** — humans understand the world through motion; a card that rotates feels like a real object
+
+### The 3D Flip Illusion
+
+The flip animation uses a three-layer structure:
+
+```
+<div style="perspective: 1000px">           ← Layer 1: sets up the 3D space
+  <motion.div style="transformStyle: preserve-3d"  ← Layer 2: rotates 0°↔180°
+    animate={{ rotateY: isFlipped ? 180 : 0 }}
+  >
+    <div style="backfaceVisibility: hidden" />     ← Layer 3a: back face ("?")
+    <div style="backfaceVisibility: hidden"        ← Layer 3b: front face (symbol)
+         style="rotateY: 180" />                       pre-rotated 180°
+  </motion.div>
+</div>
+```
+
+**`perspective`:** Creates the 3D depth effect. Lower values (400px) look dramatic; higher values (1200px) look subtle. 1000px is a natural middle ground.
+
+**`transformStyle: preserve-3d`:** Without this, the browser flattens all children into a 2D plane — the 3D trick breaks entirely.
+
+**`backfaceVisibility: hidden`:** Each face is hidden when it is pointing away from the viewer. This is what creates the swap — one face disappears, then the other appears.
+
+**Pre-rotating the front face 180°:** The front face starts facing backward (hidden). When the container rotates to 180°, the front face's own 180° + the container's 180° = 360° = facing forward.
+
+### Spring Physics
+
+Framer Motion's `type: "spring"` gives animations physical weight:
+
+```typescript
+transition: {
+  type: "spring",
+  stiffness: 260,  // how fast it moves (higher = faster)
+  damping: 20,     // how much it slows down (lower = more bounce)
+}
+```
+
+Compare the feel:
+- **`stiffness: 400, damping: 40`** — snappy, no bounce
+- **`stiffness: 260, damping: 20`** — brisk, slight overshoot (used for card flip)
+- **`stiffness: 100, damping: 10`** — slow and bouncy (too much for UI)
+
+The slight overshoot on the card flip makes it feel like a real card thrown down on a table — not a computer animation.
+
+### `animate` as a Declarative Description
+
+In Framer Motion you describe **what state something should be in**, not **how to get there**:
+
+```typescript
+// Declarative — Framer Motion figures out the animation
+<motion.div animate={{ rotateY: isFlipped ? 180 : 0 }}>
+
+// Not imperative — you don't write "start at 0, add 1 per frame until 180"
+```
+
+When `isFlipped` changes from `false` to `true`, Framer Motion automatically animates the value from its current position (0) to the target (180). When it changes back, it animates in reverse.
+
+### The Matched Pop
+
+When a pair is found, the front face briefly scales up and back:
+
+```typescript
+animate={isMatched ? { scale: [1, 1.12, 1] } : { scale: 1 }}
+```
+
+Passing an **array** to `animate` creates a keyframe sequence — Framer Motion moves through each value in order. `[1, 1.12, 1]` means: stay at normal size, grow 12%, return to normal. The whole thing takes ~200ms. It draws the player's eye to the matched pair without being distracting.
+
+---
+
 *More concepts will be added as each phase is implemented.*

@@ -1,5 +1,6 @@
 "use client";
 
+import { motion } from "framer-motion";
 import type { Card } from "@/types/game";
 
 type CardSize = "md" | "sm";
@@ -12,51 +13,110 @@ type CardProps = {
   onClick: () => void;
 };
 
+// Physical dimensions of each card size
 const SIZE_CLASSES: Record<CardSize, string> = {
   md: "w-16 h-16 text-2xl",
   sm: "w-12 h-12 text-xl",
 };
 
 /**
- * Card has four distinct visual states:
+ * The 3D flip illusion works by rotating a container 180° on the Y axis.
+ * Both faces (back and front) are inside the container with `backfaceVisibility: hidden`.
+ * The front face starts pre-rotated 180° so it is hidden until the container
+ * itself rotates 180°, at which point the combined rotation equals 360° and
+ * the front face appears facing the player.
  *
- *  1. face-down, board open   → dark gray, hoverable
- *  2. face-down, board locked → dimmed, not-allowed cursor
- *  3. face-up (being evaluated) → indigo, no hover effect
- *  4. matched                 → green, disabled
- *
- * State 2 is the new addition in Phase 5.
- * It tells the player "wait — I'm evaluating those two cards."
+ * The matched "pop" uses a quick scale + opacity spring to draw the eye
+ * without being distracting.
  */
-export default function Card({ card, size = "md", isLocked = false, onClick }: CardProps) {
+export default function Card({
+  card,
+  size = "md",
+  isLocked = false,
+  onClick,
+}: CardProps) {
   const { symbol, isFlipped, isMatched } = card;
-  const isVisible = isFlipped || isMatched;
 
   // A card is interactable only when the board is open AND it hasn't been
   // matched yet AND it isn't already face-up.
   const isInteractable = !isMatched && !isFlipped && !isLocked;
 
+  // Rotation angle drives the entire flip illusion.
+  // 0° = face-down (showing back), 180° = face-up (showing symbol).
+  const rotateY = isFlipped || isMatched ? 180 : 0;
+
   return (
-    <button
-      onClick={onClick}
-      disabled={!isInteractable}
-      className={`
-        ${SIZE_CLASSES[size]}
-        rounded-xl font-bold
-        flex items-center justify-center
-        transition-all duration-150
-        select-none
-        ${isMatched
-          ? "bg-green-800 cursor-default text-green-200 opacity-80"
-          : isFlipped
-            ? "bg-indigo-600 text-white shadow-lg shadow-indigo-500/30"
-            : isLocked
-              ? "bg-gray-700 text-gray-600 opacity-40 cursor-not-allowed"
-              : "bg-gray-700 hover:bg-gray-600 hover:scale-105 text-gray-400 cursor-pointer"
-        }
-      `}
+    // Outer wrapper: provides the 3D perspective.
+    // perspective must be set on the parent of the element that transforms.
+    // A value of 800–1200px gives a natural, not-too-extreme depth effect.
+    <div
+      className={`${SIZE_CLASSES[size]} cursor-pointer`}
+      style={{ perspective: "1000px" }}
+      onClick={isInteractable ? onClick : undefined}
     >
-      {isVisible ? symbol : "?"}
-    </button>
+      {/* Container: the element that actually rotates.
+          transformStyle: "preserve-3d" tells the browser that child elements
+          exist in 3D space relative to this container, not flattened into 2D. */}
+      <motion.div
+        className="relative w-full h-full"
+        animate={{ rotateY }}
+        transition={{
+          // spring gives the card a slight overshoot — it feels physical
+          type: "spring",
+          stiffness: 260,
+          damping: 20,
+        }}
+        style={{ transformStyle: "preserve-3d" }}
+      >
+
+        {/* ── Back face (the "?" side) ──────────────────────────────────────
+            No extra rotation — this face is visible at rotateY(0°).
+            backfaceVisibility: hidden hides it once the container passes 90°. */}
+        <div
+          className={`
+            absolute inset-0 rounded-xl
+            flex items-center justify-center font-bold
+            select-none
+            ${isLocked
+              ? "bg-gray-700 text-gray-600 opacity-40"
+              : "bg-gray-700 text-gray-400 hover:bg-gray-600"
+            }
+          `}
+          style={{ backfaceVisibility: "hidden" }}
+        >
+          ?
+        </div>
+
+        {/* ── Front face (the symbol side) ─────────────────────────────────
+            Pre-rotated 180° so it is hidden at rotateY(0°).
+            When the container reaches rotateY(180°), this face's own 180° +
+            the container's 180° = 360° = facing forward again. */}
+        <motion.div
+          className={`
+            absolute inset-0 rounded-xl
+            flex items-center justify-center font-bold
+            select-none
+            ${isMatched
+              ? "bg-green-800 text-green-200"
+              : "bg-indigo-600 text-white shadow-lg shadow-indigo-500/30"
+            }
+          `}
+          style={{
+            backfaceVisibility: "hidden",
+            rotateY: 180, // pre-rotated so it hides at rest
+          }}
+          // Scale pop when matched — runs once when isMatched becomes true
+          animate={isMatched ? { scale: [1, 1.12, 1] } : { scale: 1 }}
+          transition={
+            isMatched
+              ? { type: "spring", stiffness: 400, damping: 15, delay: 0.15 }
+              : {}
+          }
+        >
+          {symbol}
+        </motion.div>
+
+      </motion.div>
+    </div>
   );
 }
