@@ -227,4 +227,34 @@ The board receives `isLocked || isComplete` — the `||` means: lock the board e
 | `src/components/game/GameComplete.tsx` | New — completion modal |
 | `src/app/page.tsx` | Mounts GameComplete; freezes board on completion |
 
+---
+
+## Phase 7 — Timer System
+
+**Date:** 2026-06-21
+
+### What Was Built
+
+- `src/hooks/useTimer.ts` — `useEffect` hook that starts a `setInterval` when `startTime` is set and clears it when `isComplete` is true or when the component unmounts
+- `src/hooks/useGameState.ts` — calls `useTimer(gameState.startTime, gameState.isComplete, setGameState)`
+
+### How It Works
+
+`useTimer` subscribes to changes in `startTime` and `isComplete`. When `startTime` becomes non-null (first flip), the effect starts a 1-second interval. Each tick computes `Math.floor((Date.now() - startTime) / 1000)` and writes it to `gameState.elapsedTime`. When `isComplete` becomes true, the cleanup runs and clears the interval.
+
+### Key Decisions
+
+**Compute elapsed from origin, don't increment:** `elapsedTime = Math.floor((Date.now() - startTime) / 1000)` is accurate regardless of how late each interval fires. Incrementing by 1 each tick would drift — `setInterval` is not guaranteed to fire at exactly 1000ms.
+
+**`useTimer` writes via `setGameState`:** Keeps `elapsedTime` inside `GameState` — the single source of truth. This makes it straightforward to persist in Phase 9 and display in the completion screen.
+
+**Single hook call in `useGameState`:** The timer is a concern of the game, not the page. Keeping it inside `useGameState` means `page.tsx` stays clean.
+
+### Files Modified
+
+| File | Change |
+|---|---|
+| `src/hooks/useTimer.ts` | Implemented timer with useEffect + setInterval |
+| `src/hooks/useGameState.ts` | Calls useTimer; imports it |
+
 *Future phases will append entries below this line.*

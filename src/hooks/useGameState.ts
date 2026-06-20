@@ -1,6 +1,7 @@
 import { useState, useCallback, useRef } from "react";
 import { generateCards } from "@/lib/cardUtils";
 import { checkMatch, isGameComplete } from "@/lib/gameLogic";
+import { useTimer } from "@/hooks/useTimer";
 import { FLIP_BACK_DELAY_MS } from "@/constants/game";
 import type { Difficulty, GameState } from "@/types/game";
 
@@ -161,6 +162,12 @@ export function useGameState() {
     setGameState(buildInitialState(difficulty));
     setFlippedCardIds([]);
   }, [difficulty]);
+
+  // ─── Timer ─────────────────────────────────────────────────────────────────
+
+  // Starts ticking when startTime is set, stops when isComplete is true.
+  // Writes elapsedTime back into gameState every second via setGameState.
+  useTimer(gameState.startTime, gameState.isComplete, setGameState);
 
   // ─── Return ────────────────────────────────────────────────────────────────
 

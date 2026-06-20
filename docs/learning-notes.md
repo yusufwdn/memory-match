@@ -371,4 +371,70 @@ The pattern: **smart parents pass data down; dumb children display it and report
 
 ---
 
+---
+
+## Phase 7 — useEffect and setInterval
+
+### useEffect
+
+`useEffect` lets you run code *after* React renders. It's for side effects — things that reach outside React's world:
+
+- Starting a timer
+- Reading from Local Storage
+- Subscribing to an event
+- Fetching data
+
+```typescript
+useEffect(() => {
+  // Runs after render when dependencies change
+}, [dependency1, dependency2]);
+```
+
+**Dependency array rules:**
+- `[]` — runs once after the first render only
+- `[a, b]` — runs after any render where `a` or `b` changed
+- No array — runs after every render (rarely what you want)
+
+### Cleanup Function
+
+The function you return from `useEffect` is the cleanup. React calls it before the next run of the effect, and when the component unmounts.
+
+```typescript
+useEffect(() => {
+  const interval = setInterval(() => {
+    // tick
+  }, 1000);
+
+  return () => clearInterval(interval); // cleanup
+}, [startTime]);
+```
+
+Without cleanup, every time `startTime` changes a new interval starts — but the old one keeps running. After 10 changes you'd have 10 parallel timers all writing to state.
+
+**Rule:** if you start something in an effect, stop it in the cleanup.
+
+### setInterval vs setTimeout
+
+| | `setInterval` | `setTimeout` |
+|---|---|---|
+| Fires | Repeatedly, every N ms | Once, after N ms |
+| Cleanup | `clearInterval(id)` | `clearTimeout(id)` |
+| Use for | Timers, polling | Delays, flip-back |
+
+In this game: `setInterval` drives the clock. `setTimeout` drives the flip-back delay. Both return an ID you should store and clear on cleanup.
+
+### Why Compute From Origin
+
+```typescript
+// DRIFTS — setInterval is not perfectly precise
+elapsedTime += 1;
+
+// ACCURATE — always computes from the fixed start point
+elapsedTime = Math.floor((Date.now() - startTime) / 1000);
+```
+
+If `setInterval` fires 50ms late every tick, the increment approach adds ~3 seconds of error per hour. The origin-compute approach stays exact because `Date.now()` always reads the real clock.
+
+---
+
 *More concepts will be added as each phase is implemented.*
