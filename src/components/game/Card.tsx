@@ -126,11 +126,14 @@ export default function Card({
             backfaceVisibility: "hidden",
             rotateY: 180, // pre-rotated so it hides at rest
           }}
-          // Scale pop when matched — runs once when isMatched becomes true
+          // Scale pop when matched — runs once when isMatched becomes true.
+          // Must use tween (duration-based), not spring: Framer Motion's spring
+          // animator only supports two keyframes (start → end), but this sequence
+          // has three (1 → 1.12 → 1), which requires the keyframes animator.
           animate={isMatched ? { scale: [1, 1.12, 1] } : { scale: 1 }}
           transition={
             isMatched
-              ? { type: "spring", stiffness: 400, damping: 15, delay: 0.15 }
+              ? { duration: 0.35, ease: "easeInOut", delay: 0.15 }
               : {}
           }
         >
