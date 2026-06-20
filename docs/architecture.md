@@ -10,9 +10,10 @@ src/
 │
 ├── components/
 │   ├── game/
-│   │   ├── Board.tsx       ← Card grid layout
-│   │   ├── Card.tsx        ← Individual card (face-down / face-up / matched)
-│   │   └── GameControls.tsx← New Game and Restart buttons
+│   │   ├── Board.tsx         ← Card grid layout (stagger entrance animation)
+│   │   ├── Card.tsx          ← Individual card (3D flip, matched pop)
+│   │   ├── DifficultyModal.tsx ← Difficulty picker shown on "New Game"
+│   │   └── GameControls.tsx  ← New Game and Restart buttons
 │   │
 │   ├── hud/
 │   │   ├── MoveCounter.tsx ← Shows move count

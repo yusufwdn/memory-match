@@ -639,4 +639,106 @@ Passing an **array** to `animate` creates a keyframe sequence — Framer Motion 
 
 ---
 
-*More concepts will be added as each phase is implemented.*
+## Phase 11 — Modal State Pattern
+
+### Where to Put UI State
+
+`isSelectingDifficulty` controls whether the modal is open. It lives in `page.tsx` — not in `useGameState`.
+
+Why? Because it is **UI state**, not **game state**. The game itself doesn't care whether a modal is on screen. If the player closes the modal without choosing, nothing about the game changes.
+
+The rule: **only put state in the hook if the game logic needs it.** Pure display decisions (is this panel open? is this tooltip visible?) belong in the component that renders them.
+
+### `aria-pressed` for Toggle Buttons
+
+```tsx
+<button aria-pressed={isActive}>Easy</button>
+```
+
+`aria-pressed` tells screen readers that this button is a toggle — it has an "on" and "off" state. Screen readers will announce "Easy button, pressed" or "Easy button, not pressed", which communicates the current selection without requiring visual inspection.
+
+### `stopPropagation` for Nested Clicks
+
+The difficulty modal has two clickable layers:
+- The backdrop (clicking it closes the modal)
+- The modal card itself (clicking it does nothing to the modal)
+
+Without `stopPropagation`, clicking anywhere inside the modal would also trigger the backdrop's `onClick`:
+
+```tsx
+// Backdrop closes on click
+<div onClick={onClose}>
+
+  {/* Without stopPropagation, clicking here also triggers onClose */}
+  <div onClick={(e) => e.stopPropagation()}>
+    {/* Modal content */}
+  </div>
+
+</div>
+```
+
+`e.stopPropagation()` stops the click event from "bubbling up" to parent elements.
+
+---
+
+## Phase 12 — Accessibility and Stagger Animation
+
+### What Is Accessibility?
+
+Accessibility means the application works for people who navigate differently — using a keyboard instead of a mouse, or a screen reader instead of a monitor.
+
+In React, accessibility is mostly about two things:
+1. **Semantic HTML** — using the right elements (`button`, `role="grid"`) so browsers know what each thing is
+2. **ARIA attributes** — extra labels that describe state screen readers can't infer visually
+
+### `aria-live` for Dynamic Content
+
+```tsx
+<p aria-live="polite" aria-atomic="true">{moves}</p>
+```
+
+`aria-live="polite"` tells screen readers: "when this content changes, announce it the next time the user pauses." Without it, a screen reader user would never hear move count updates.
+
+`aria-atomic="true"` means announce the whole element, not just the changed part. For a number, this doesn't matter much — but for `"3 / 6 pairs matched"` it prevents the screen reader from saying only "3" instead of the full label.
+
+### Keyboard Support on Cards
+
+```tsx
+onKeyDown={(e) => {
+  if (e.key === "Enter" || e.key === " ") {
+    e.preventDefault();
+    onClick();
+  }
+}}
+tabIndex={isInteractable ? 0 : -1}
+```
+
+- `tabIndex={0}` puts the card in the keyboard tab order — the player can reach it with Tab
+- `tabIndex={-1}` removes non-interactable cards from the tab order — matched and locked cards are skipped
+- `e.preventDefault()` on Space prevents the page from scrolling (the default browser behaviour for Space)
+
+### Framer Motion Variants and Stagger
+
+Variants are named animation presets shared between parent and children:
+
+```typescript
+// Parent — controls timing
+const boardVariants = {
+  hidden: {},
+  show: { transition: { staggerChildren: 0.04 } },
+};
+
+// Child — controls what each item does
+const cardVariants = {
+  hidden: { opacity: 0, scale: 0.75 },
+  show:   { opacity: 1, scale: 1 },
+};
+```
+
+When the parent animates to "show", Framer Motion automatically propagates the variant name to all children — but delays each one by `staggerChildren` seconds. The 4th card starts 120ms after the 1st, creating a cascade without any manual delay calculation.
+
+The Board receives a `key` prop that changes on every new game. When React sees a new `key`, it unmounts and remounts the component — the entrance animation replays from scratch on every reset.
+
+---
+
+*All 12 phases complete.*

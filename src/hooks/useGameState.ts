@@ -32,6 +32,10 @@ export function useGameState() {
   // Tracks whether the most recent game set a new personal best.
   const [isNewBest, setIsNewBest] = useState(false);
 
+  // Incremented on every new game or restart so the Board component
+  // receives a new key and remounts — this triggers the stagger entrance animation.
+  const [gameKey, setGameKey] = useState(0);
+
   /**
    * Tracks the IDs of the cards currently face-up but not yet resolved.
    * Can hold 0, 1, or 2 IDs. When it holds 2, the board is locked.
@@ -215,6 +219,7 @@ export function useGameState() {
       setGameState(buildInitialState(activeDifficulty));
       setFlippedCardIds([]);
       setIsNewBest(false);
+      setGameKey((k) => k + 1);
     },
     [difficulty]
   );
@@ -224,6 +229,7 @@ export function useGameState() {
     setGameState(buildInitialState(difficulty));
     setFlippedCardIds([]);
     setIsNewBest(false);
+    setGameKey((k) => k + 1);
   }, [difficulty]);
 
   // ─── Timer ─────────────────────────────────────────────────────────────────
@@ -244,6 +250,7 @@ export function useGameState() {
     isLocked,
     bestScores,
     isNewBest,
+    gameKey,
     handleFlipCard,
     handleNewGame,
     handleRestart,

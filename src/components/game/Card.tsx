@@ -10,6 +10,8 @@ type CardProps = {
   size?: CardSize;
   /** True while two unmatched cards are showing. Dims unflipped cards. */
   isLocked?: boolean;
+  /** Position in the grid — used for the aria-label only. */
+  index: number;
   onClick: () => void;
 };
 
@@ -33,6 +35,7 @@ export default function Card({
   card,
   size = "md",
   isLocked = false,
+  index,
   onClick,
 }: CardProps) {
   const { symbol, isFlipped, isMatched } = card;
@@ -44,6 +47,13 @@ export default function Card({
   // Rotation angle drives the entire flip illusion.
   // 0° = face-down (showing back), 180° = face-up (showing symbol).
   const rotateY = isFlipped || isMatched ? 180 : 0;
+
+  // Describe the card's current state for screen readers.
+  const ariaLabel = isMatched
+    ? `Card ${index + 1}: ${symbol}, matched`
+    : isFlipped
+      ? `Card ${index + 1}: ${symbol}, face up`
+      : `Card ${index + 1}: face down`;
 
   return (
     // Outer wrapper: provides the 3D perspective.
@@ -58,7 +68,18 @@ export default function Card({
           transformStyle: "preserve-3d" tells the browser that child elements
           exist in 3D space relative to this container, not flattened into 2D. */}
       <motion.div
-        className="relative w-full h-full"
+        role="button"
+        aria-label={ariaLabel}
+        aria-disabled={!isInteractable}
+        tabIndex={isInteractable ? 0 : -1}
+        onKeyDown={(e) => {
+          // Allow keyboard players to flip cards with Enter or Space
+          if (isInteractable && (e.key === "Enter" || e.key === " ")) {
+            e.preventDefault();
+            onClick();
+          }
+        }}
+        className="relative w-full h-full outline-none focus-visible:ring-2 focus-visible:ring-indigo-400 rounded-xl"
         animate={{ rotateY }}
         transition={{
           // spring gives the card a slight overshoot — it feels physical

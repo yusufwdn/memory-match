@@ -409,4 +409,85 @@ score = BASE_SCORE × DIFFICULTY_MULTIPLIER[difficulty]
 | `docs/learning-notes.md` | Phase 10 — Animation and Framer Motion |
 | `docs/implementation-log.md` | This entry |
 
-*Future phases will append entries below this line.*
+---
+
+## Phase 11 — Difficulty Levels
+
+**Date:** 2026-06-21
+
+### What Was Built
+
+- `src/components/game/DifficultyModal.tsx` — animated modal with three difficulty option cards:
+  - Shows difficulty name, pair count, and grid dimensions
+  - Currently active difficulty is highlighted in indigo with `aria-pressed`
+  - Backdrop click dismisses without changing difficulty
+  - Clicking any option immediately calls `onSelect(difficulty)` and starts a new game
+- `src/hooks/useGameState.ts` — added `gameKey` state (incremented on every new game / restart)
+- `src/app/page.tsx`:
+  - `isSelectingDifficulty` state controls the modal (UI state — stays in the page, not the hook)
+  - "New Game" button now opens the modal instead of calling `handleNewGame` directly
+  - "New Game" in `GameComplete` also opens the modal
+  - `key={gameKey}` passed to Board so it remounts and replays entrance animation on reset
+
+### Key Decisions
+
+**`isSelectingDifficulty` lives in `page.tsx`, not the hook:** The hook manages game logic. Whether a picker modal is open is a presentation concern — it belongs in the component that renders it.
+
+**Clicking a difficulty auto-starts:** No separate "Confirm" button. The selection IS the action. Fewer clicks, less ambiguity.
+
+**`gameKey` in the hook, not in `GameState`:** `GameState` represents a game record (cards, moves, score). A render key is infrastructure, not a game concept. Keeping them separate maintains a clean type boundary.
+
+### Files Created / Modified
+
+| File | Change |
+|---|---|
+| `src/components/game/DifficultyModal.tsx` | New — difficulty picker modal |
+| `src/hooks/useGameState.ts` | Added `gameKey` state |
+| `src/app/page.tsx` | Modal state; Board key; routing "New Game" through modal |
+
+---
+
+## Phase 12 — Polish & Optimization
+
+**Date:** 2026-06-21
+
+### What Was Built
+
+- `src/components/game/Board.tsx` — stagger entrance animation:
+  - `boardVariants` with `staggerChildren: 0.04` — each card appears 40ms after the previous
+  - `cardVariants` — each card fades in from `opacity: 0, scale: 0.75` to `opacity: 1, scale: 1`
+  - `role="grid"` / `role="gridcell"` for screen reader navigation
+- `src/components/game/Card.tsx` — accessibility additions:
+  - `aria-label` describes current state: "Card 5: face down", "Card 3: 🐱, matched"
+  - `tabIndex={0}` on interactable cards, `tabIndex={-1}` on inactive ones
+  - `onKeyDown` handles Enter and Space — keyboard players can play the full game
+  - `focus-visible:ring-2` ring shows keyboard focus without showing on mouse click
+- `src/components/hud/MoveCounter.tsx` — `aria-live="polite"` announces count changes
+- `src/components/hud/MatchCounter.tsx` — `aria-live="polite"` + `aria-label` announces full text
+- `src/app/page.tsx`:
+  - Best score display below HUD: "Best (Easy): 1,580" or "No record yet for Easy"
+  - Responsive padding: `p-4 sm:p-6`, `gap-6 sm:gap-8`, `px-6 sm:px-8`
+  - Title size: `text-3xl sm:text-4xl`
+
+### Key Decisions
+
+**Stagger via `variants` + `key` remount:** The Board remounts on every new game/restart (via `key={gameKey}`), which replays the stagger entrance animation from scratch. This requires no manual state tracking — the animation is driven entirely by mount/unmount.
+
+**`type: "spring" as const`:** TypeScript infers the `type` field as `string` inside a plain object literal. Framer Motion expects the literal type `"spring"`. The `as const` assertion narrows it to the exact string type without needing to type the whole object.
+
+**`tabIndex={-1}` on inactive cards:** Removes matched and locked cards from the Tab order entirely. Keyboard players only tab through cards they can actually flip, which is far less tedious on a 24-card hard board.
+
+**`focus-visible:ring` instead of `focus:ring`:** `focus:ring` would show a ring on mouse click too, which looks odd. `focus-visible:ring` only shows the ring when the element was focused via keyboard — correct browser behaviour.
+
+### Files Modified
+
+| File | Change |
+|---|---|
+| `src/components/game/Board.tsx` | Stagger animation; ARIA grid roles |
+| `src/components/game/Card.tsx` | Accessibility: aria-label, tabIndex, keyboard handler, focus ring |
+| `src/components/hud/MoveCounter.tsx` | aria-live |
+| `src/components/hud/MatchCounter.tsx` | aria-live + aria-label |
+| `src/app/page.tsx` | Best score display; responsive padding |
+| All docs | Final synchronization |
+
+*All 12 phases complete.*

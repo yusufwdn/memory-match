@@ -10,12 +10,14 @@ page.tsx renders
     │
     ▼
 useGameState initializes
-    │  - generates cards for default difficulty (easy)
+    │  - reads last difficulty from Local Storage (defaults to "easy")
+    │  - loads best scores from Local Storage
+    │  - generates cards for that difficulty
     │  - all cards face-down
     │  - moves = 0, matches = 0, isComplete = false
     │
     ▼
-Player sees the board
+Player sees the board (cards entrance stagger animation plays)
     │
     ▼
 Player flips Card A
@@ -48,8 +50,14 @@ Game Complete
     │  - completion modal shown
     │
     ▼
-Player clicks New Game or Restart
-    │
+Player clicks Restart
+    │  - board resets with same difficulty
+    └──▶ Back to start
+
+Player clicks New Game
+    │  - DifficultyModal opens
+    │  - Player selects Easy / Medium / Hard
+    │  - board resets with new difficulty
     └──▶ Back to start
 ```
 
