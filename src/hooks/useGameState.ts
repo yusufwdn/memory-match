@@ -14,15 +14,14 @@ import type { Difficulty, GameScore, GameState } from "@/types/game";
 export function useGameState() {
   // ─── Core state ────────────────────────────────────────────────────────────
 
-  // Always initialize with "easy" so the server render and the initial client
-  // render produce identical HTML. localStorage is unavailable during SSR —
-  // reading it in a lazy initializer returns different values on server vs client,
-  // which causes React to crash with a hydration mismatch error.
-  // The real persisted values are loaded in the useEffect below, after mount.
+  // Initialize with an empty card array — no Math.random() call here.
+  // shuffleArray uses Math.random(), which produces a different sequence on
+  // the server vs the client. If we called buildInitialState() here, the
+  // server would shuffle to [🐶,🐭,...] and the client would shuffle to
+  // [🐱,🐹,...] — React sees the symbol mismatch and throws a hydration error.
+  // The real deck is generated in the useEffect below, client-side only.
   const [difficulty, setDifficulty] = useState<Difficulty>("easy");
-  const [gameState, setGameState] = useState<GameState>(() =>
-    buildInitialState("easy")
-  );
+  const [gameState, setGameState] = useState<GameState>(buildEmptyState);
 
   // Best scores start empty so the server and first client render agree.
   // Populated from localStorage in the useEffect below.
@@ -239,17 +238,16 @@ export function useGameState() {
   // render, but that is fine: it's not a hydration mismatch, just a
   // normal client-side update.
   useEffect(() => {
+    // Runs once, on the client only, after the first render.
+    // Safe to call Math.random() and read localStorage here — hydration is done.
     const savedDifficulty = getLastDifficulty();
-    const savedBestScores = getBestScores();
+    const activeDifficulty = savedDifficulty ?? "easy";
 
-    setBestScores(savedBestScores);
-
-    if (savedDifficulty && savedDifficulty !== "easy") {
-      setDifficulty(savedDifficulty);
-      setGameState(buildInitialState(savedDifficulty));
-      setGameKey((k) => k + 1);
-    }
-  // Empty dependency array — runs exactly once after the initial render.
+    setBestScores(getBestScores());
+    setDifficulty(activeDifficulty);
+    // Generate the shuffled deck here so Math.random() never runs on the server.
+    setGameState(buildInitialState(activeDifficulty));
+    setGameKey((k) => k + 1);
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
@@ -285,6 +283,21 @@ export function useGameState() {
 function buildInitialState(difficulty: Difficulty): GameState {
   return {
     cards: generateCards(difficulty),
+    moves: 0,
+    matches: 0,
+    isComplete: false,
+    startTime: null,
+    elapsedTime: 0,
+    score: null,
+  };
+}
+
+// Used as the SSR-safe initial value — no Math.random(), no localStorage.
+// React renders this on both server and client so the HTML always matches.
+// The real deck is generated in useEffect after hydration completes.
+function buildEmptyState(): GameState {
+  return {
+    cards: [],
     moves: 0,
     matches: 0,
     isComplete: false,
