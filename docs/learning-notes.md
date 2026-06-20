@@ -82,4 +82,67 @@ We will use this pattern heavily starting in Phase 3.
 
 ---
 
+---
+
+## Phase 2 — useState and useCallback
+
+### useState
+
+`useState` is the most fundamental React hook. It stores a value and tells React to re-render when that value changes.
+
+```typescript
+const [moves, setMoves] = useState(0);
+```
+
+- `moves` is the current value
+- `setMoves` is the function you call to change it
+- Calling `setMoves(1)` triggers a re-render — the component updates to show `1`
+
+You never assign directly: `moves = 1` does NOT work in React. You must call the setter.
+
+### useState with a function (lazy initializer)
+
+```typescript
+const [gameState, setGameState] = useState<GameState>(() =>
+  buildInitialState("easy")
+);
+```
+
+Passing a **function** to `useState` (not a value) is called a "lazy initializer." React calls it once on the first render and ignores it after that.
+
+This matters when the initial value is expensive to calculate. Without the function, React would re-run `buildInitialState("easy")` on every render — even though it only uses the result once.
+
+### useCallback
+
+`useCallback` wraps a function so React doesn't recreate it on every render:
+
+```typescript
+const handleNewGame = useCallback(() => {
+  setGameState(buildInitialState(difficulty));
+}, [difficulty]);
+```
+
+The second argument `[difficulty]` is the "dependency array." React only creates a new function when `difficulty` changes. Otherwise it reuses the same function reference.
+
+**Why does this matter?** If you pass a handler to a child component, and the handler is recreated every render, React sees it as a "changed prop" and re-renders the child unnecessarily.
+
+### Custom Hooks
+
+A custom hook is a plain function whose name starts with `use`. It can call other hooks (`useState`, `useCallback`, etc.).
+
+```typescript
+function useGameState() {
+  const [moves, setMoves] = useState(0);
+  // ...
+  return { moves, handleNewGame };
+}
+```
+
+By putting logic in a hook instead of a component, the logic becomes:
+- Reusable (multiple components could call the same hook)
+- Testable (the hook can be tested without rendering anything)
+- Clean (the component file stays small)
+
+---
+
 *More concepts will be added as each phase is implemented.*

@@ -1,19 +1,30 @@
 "use client";
 
+import type { Card } from "@/types/game";
+import CardComponent from "./Card";
+
+type BoardProps = {
+  cards: Card[];
+  onCardClick: (cardId: string) => void;
+};
+
 /**
  * Board renders the grid of cards.
  *
- * It receives the card data from useGameState (in page.tsx)
- * and maps each card to a <Card /> component.
- *
- * The grid layout is controlled by the difficulty setting —
- * easy uses 4×3, medium uses 4×4, hard uses 6×4.
+ * The grid uses CSS Grid with auto-fit columns so the layout adapts
+ * to the number of cards. Phase 3 will refine this into a proper
+ * difficulty-aware grid (4×3, 4×4, 6×4).
  */
-export default function Board() {
-  // Phase 3: will receive cards and onCardClick as props.
+export default function Board({ cards, onCardClick }: BoardProps) {
   return (
-    <div className="flex items-center justify-center">
-      <p className="text-gray-400 text-sm">Board — Phase 3</p>
+    <div className="grid grid-cols-4 gap-3">
+      {cards.map((card) => (
+        <CardComponent
+          key={card.id}
+          card={card}
+          onClick={() => onCardClick(card.id)}
+        />
+      ))}
     </div>
   );
 }

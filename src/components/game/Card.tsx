@@ -1,20 +1,46 @@
 "use client";
 
+import type { Card } from "@/types/game";
+
+type CardProps = {
+  card: Card;
+  onClick: () => void;
+};
+
 /**
  * Card renders a single card on the board.
  *
- * It has two visual states:
- *   - Face-down: shows a hidden back face
- *   - Face-up: shows the symbol (emoji)
+ * Visual states:
+ *   - Face-down (default): shows a question mark, dark background
+ *   - Face-up (isFlipped): shows the symbol, lighter background
+ *   - Matched (isMatched): shows the symbol, green tint — permanently visible
  *
- * The visual flip animation (Phase 10) will be added using Framer Motion.
- * For now it renders a basic placeholder.
+ * Phase 10 will replace this with a Framer Motion 3D flip animation.
+ * For now the state change is instant (no transition).
  */
-export default function Card() {
-  // Phase 2 & 4: will receive card data and onClick handler as props.
+export default function Card({ card, onClick }: CardProps) {
+  const { symbol, isFlipped, isMatched } = card;
+
+  // A matched card cannot be clicked again.
+  const isVisible = isFlipped || isMatched;
+
   return (
-    <div className="w-16 h-16 bg-gray-700 rounded-lg flex items-center justify-center cursor-pointer">
-      <span className="text-gray-400 text-xs">?</span>
-    </div>
+    <button
+      onClick={onClick}
+      disabled={isMatched}
+      className={`
+        w-16 h-16 rounded-xl text-2xl font-bold
+        flex items-center justify-center
+        transition-colors duration-150
+        ${isMatched
+          ? "bg-green-800 cursor-default"
+          : isFlipped
+            ? "bg-indigo-700"
+            : "bg-gray-700 hover:bg-gray-600 cursor-pointer"
+        }
+      `}
+    >
+      {isVisible ? symbol : "?"}
+    </button>
   );
 }

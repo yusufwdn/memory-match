@@ -1,19 +1,27 @@
 "use client";
 
+type TimerProps = {
+  elapsedTime: number; // seconds
+};
+
 /**
- * Timer displays the elapsed time since the first card was flipped.
- *
- * The timer starts on the first flip (not when the page loads)
- * so the player has time to study the board before the clock begins.
- *
- * Format: MM:SS (e.g. "01:45")
+ * Formats a raw second count into MM:SS display string.
+ * e.g. 90 seconds → "01:30"
  */
-export default function Timer() {
-  // Phase 7: will receive elapsedTime: number (seconds) as a prop.
+function formatTime(seconds: number): string {
+  const mins = Math.floor(seconds / 60);
+  const secs = seconds % 60;
+  // padStart(2, "0") ensures single digits get a leading zero: 5 → "05"
+  return `${String(mins).padStart(2, "0")}:${String(secs).padStart(2, "0")}`;
+}
+
+export default function Timer({ elapsedTime }: TimerProps) {
   return (
     <div className="text-center">
       <p className="text-xs text-gray-400 uppercase tracking-wide">Time</p>
-      <p className="text-2xl font-bold text-white font-mono">00:00</p>
+      <p className="text-2xl font-bold text-white font-mono">
+        {formatTime(elapsedTime)}
+      </p>
     </div>
   );
 }

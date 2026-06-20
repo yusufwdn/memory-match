@@ -58,4 +58,42 @@ A chronological record of what was built, when, and why.
 
 ---
 
+---
+
+## Phase 2 — Card Data Model
+
+**Date:** 2026-06-21
+
+### What Was Built
+
+- Implemented `shuffleArray<T>` using the Fisher-Yates algorithm in `src/lib/cardUtils.ts`
+- Implemented `generateCards(difficulty)` — selects symbols, duplicates into pairs, shuffles, assigns unique IDs
+- Implemented `useGameState` hook with `useState`, `useCallback`, `buildInitialState`, `handleNewGame`, `handleRestart`
+- Updated `page.tsx` to call `useGameState` and pass data to all components as props
+- Updated all components to accept and render real props: `Board`, `Card`, `MoveCounter`, `MatchCounter`, `Timer`, `GameControls`
+
+### Key Decisions
+
+**Single state object for GameState:** Grouping all game state into one object makes reset trivial — replace the whole object with a fresh one. Individual `useState` calls for each field would require multiple setters on reset.
+
+**`buildInitialState` as a plain function outside the hook:** Both the initial `useState` call and `handleNewGame` need to build a clean state. Extracting it avoids code duplication.
+
+**`useCallback` on handlers:** Prevents React from recreating handler functions on every render. A good habit even when not strictly necessary for performance at this scale.
+
+**Board uses a flat `grid-cols-4` for now:** Phase 3 will make the grid difficulty-aware (4×3 / 4×4 / 6×4). Hardcoding it now avoids over-engineering before the board rendering phase.
+
+### Files Modified
+
+| File | Change |
+|---|---|
+| `src/lib/cardUtils.ts` | Implemented `shuffleArray` and `generateCards` |
+| `src/hooks/useGameState.ts` | Implemented hook with state and handlers |
+| `src/app/page.tsx` | Wired hook; passes props to all components |
+| `src/components/game/Board.tsx` | Accepts `cards` and `onCardClick` props |
+| `src/components/game/Card.tsx` | Renders face-down / face-up / matched states |
+| `src/components/game/GameControls.tsx` | Accepts `onNewGame` and `onRestart` props |
+| `src/components/hud/MoveCounter.tsx` | Accepts `moves` prop |
+| `src/components/hud/MatchCounter.tsx` | Accepts `matches` and `totalPairs` props |
+| `src/components/hud/Timer.tsx` | Accepts `elapsedTime` prop; formats as MM:SS |
+
 *Future phases will append entries below this line.*

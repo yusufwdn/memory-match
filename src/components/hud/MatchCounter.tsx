@@ -1,17 +1,18 @@
 "use client";
 
-/**
- * MatchCounter shows how many pairs have been matched.
- *
- * It also shows the total pairs available so the player
- * can see their progress: e.g. "3 / 8 pairs".
- */
-export default function MatchCounter() {
-  // Phase 5: will receive matches: number and totalPairs: number as props.
+type MatchCounterProps = {
+  matches: number;
+  totalPairs: number;
+};
+
+export default function MatchCounter({ matches, totalPairs }: MatchCounterProps) {
   return (
     <div className="text-center">
       <p className="text-xs text-gray-400 uppercase tracking-wide">Matches</p>
-      <p className="text-2xl font-bold text-white">0</p>
+      <p className="text-2xl font-bold text-white">
+        {matches}
+        <span className="text-sm text-gray-400 font-normal"> / {totalPairs}</span>
+      </p>
     </div>
   );
 }
