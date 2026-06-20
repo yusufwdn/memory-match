@@ -1,17 +1,36 @@
 import { useState, useCallback, useRef } from "react";
 import { generateCards } from "@/lib/cardUtils";
 import { checkMatch, isGameComplete, calculateScore } from "@/lib/gameLogic";
+import {
+  getBestScores,
+  saveBestScoreIfBeaten,
+  getLastDifficulty,
+  saveLastDifficulty,
+} from "@/lib/storage";
 import { useTimer } from "@/hooks/useTimer";
 import { FLIP_BACK_DELAY_MS, DIFFICULTY_CONFIG } from "@/constants/game";
-import type { Difficulty, GameState } from "@/types/game";
+import type { Difficulty, GameScore, GameState } from "@/types/game";
 
 export function useGameState() {
   // ─── Core state ────────────────────────────────────────────────────────────
 
-  const [difficulty, setDifficulty] = useState<Difficulty>("easy");
-  const [gameState, setGameState] = useState<GameState>(() =>
-    buildInitialState("easy")
+  // Load the difficulty the player last used so the game opens on a familiar level.
+  // getLastDifficulty() reads Local Storage once — the function is only called
+  // during the lazy initializer, not on every render.
+  const [difficulty, setDifficulty] = useState<Difficulty>(
+    () => getLastDifficulty() ?? "easy"
   );
+  const [gameState, setGameState] = useState<GameState>(() =>
+    buildInitialState(getLastDifficulty() ?? "easy")
+  );
+
+  // Best scores loaded once on mount — updated optimistically after each win.
+  const [bestScores, setBestScores] = useState<Record<string, GameScore>>(
+    () => getBestScores()
+  );
+
+  // Tracks whether the most recent game set a new personal best.
+  const [isNewBest, setIsNewBest] = useState(false);
 
   /**
    * Tracks the IDs of the cards currently face-up but not yet resolved.
@@ -127,8 +146,40 @@ export function useGameState() {
       }
 
       if (isMatch) {
-        // Cards are matched — clear the tracking list immediately
+        // Cards are matched — clear the tracking list immediately.
+        // If this was the final pair, check whether it's a new best score.
+        // We read gameState.cards here to know whether the game just ended,
+        // but the actual score is inside the state update above — we use
+        // the same calculation to keep them in sync.
         setFlippedCardIds([]);
+
+        // Peek ahead: if completing this match finishes the game, persist the score.
+        // We re-compute here because the state update above hasn't committed yet.
+        const prospectiveMatched = gameState.cards.map((c) =>
+          c.id === cardId || c.id === flippedCardIds[0]
+            ? { ...c, isMatched: true }
+            : c
+        );
+        if (isGameComplete(prospectiveMatched)) {
+          const totalPairs = DIFFICULTY_CONFIG[difficulty].totalCards / 2;
+          const finalMoves = gameState.moves + 1;
+          const finalScore = calculateScore(
+            finalMoves,
+            gameState.elapsedTime,
+            difficulty,
+            totalPairs
+          );
+          const beaten = saveBestScoreIfBeaten(
+            difficulty,
+            finalScore,
+            finalMoves,
+            gameState.elapsedTime
+          );
+          if (beaten) {
+            setBestScores(getBestScores());
+            setIsNewBest(true);
+          }
+        }
       } else {
         // No match — schedule the flip-back after the delay
         clearFlipTimeout();
@@ -147,7 +198,7 @@ export function useGameState() {
         }, FLIP_BACK_DELAY_MS);
       }
     },
-    [flippedCardIds, gameState.cards]
+    [flippedCardIds, gameState.cards, gameState.moves, gameState.elapsedTime, difficulty]
   );
 
   // ─── New game / Restart ────────────────────────────────────────────────────
@@ -160,8 +211,10 @@ export function useGameState() {
       clearFlipTimeout();
       const activeDifficulty = newDifficulty ?? difficulty;
       setDifficulty(activeDifficulty);
+      saveLastDifficulty(activeDifficulty);
       setGameState(buildInitialState(activeDifficulty));
       setFlippedCardIds([]);
+      setIsNewBest(false);
     },
     [difficulty]
   );
@@ -170,6 +223,7 @@ export function useGameState() {
     clearFlipTimeout();
     setGameState(buildInitialState(difficulty));
     setFlippedCardIds([]);
+    setIsNewBest(false);
   }, [difficulty]);
 
   // ─── Timer ─────────────────────────────────────────────────────────────────
@@ -188,6 +242,8 @@ export function useGameState() {
     gameState,
     difficulty,
     isLocked,
+    bestScores,
+    isNewBest,
     handleFlipCard,
     handleNewGame,
     handleRestart,

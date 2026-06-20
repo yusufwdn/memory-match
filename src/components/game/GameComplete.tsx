@@ -1,6 +1,7 @@
 "use client";
 
 import Button from "@/components/ui/Button";
+import type { GameScore } from "@/types/game";
 
 type GameCompleteProps = {
   moves: number;
@@ -8,6 +9,10 @@ type GameCompleteProps = {
   totalPairs: number;
   score: number;
   difficultyLabel: string;
+  /** The previous best score for this difficulty, or undefined if none exists. */
+  previousBest: GameScore | undefined;
+  /** True if the player just set a new personal best on this difficulty. */
+  isNewBest: boolean;
   onPlayAgain: () => void;
   onNewGame: () => void;
 };
@@ -39,6 +44,8 @@ export default function GameComplete({
   totalPairs,
   score,
   difficultyLabel,
+  previousBest,
+  isNewBest,
   onPlayAgain,
   onNewGame,
 }: GameCompleteProps) {
@@ -60,12 +67,28 @@ export default function GameComplete({
         </p>
 
         {/* Score — the headline number */}
-        <div className="bg-indigo-950 border border-indigo-800 rounded-2xl py-4 mb-6">
+        <div className="bg-indigo-950 border border-indigo-800 rounded-2xl py-4 mb-3 relative">
+          {/* New best badge — only shown when the player set a new record */}
+          {isNewBest && (
+            <span className="absolute -top-3 left-1/2 -translate-x-1/2 bg-yellow-400 text-yellow-900 text-xs font-bold px-3 py-1 rounded-full uppercase tracking-wide whitespace-nowrap">
+              New Best!
+            </span>
+          )}
           <p className="text-4xl font-extrabold text-indigo-300 tabular-nums">
             {score.toLocaleString()}
           </p>
           <p className="text-xs text-indigo-400 mt-1 uppercase tracking-widest">Score</p>
         </div>
+
+        {/* Previous best — shown only when there IS a saved record and it wasn't just beaten */}
+        {previousBest && !isNewBest && (
+          <p className="text-xs text-gray-500 mb-4">
+            Best: {previousBest.score.toLocaleString()}
+          </p>
+        )}
+
+        {/* Spacer when no previous-best line is shown */}
+        {(!previousBest || isNewBest) && <div className="mb-4" />}
 
         {/* Stats grid */}
         <div className="grid grid-cols-3 gap-4 mb-8">

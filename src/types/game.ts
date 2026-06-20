@@ -106,6 +106,7 @@ export type DifficultyConfig = {
  * within the same difficulty level only.
  */
 export type GameScore = {
+  score: number;
   moves: number;
   timeSeconds: number;
   difficulty: Difficulty;

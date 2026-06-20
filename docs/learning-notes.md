@@ -487,4 +487,78 @@ The rule: if it's a calculation, it belongs in `lib/`, not in a hook or componen
 
 ---
 
+---
+
+## Phase 9 — Local Storage
+
+### What Is Local Storage?
+
+Local Storage is a key-value store built into every browser. Think of it like a small USB drive that lives inside the browser: data written there survives page refreshes and browser restarts, but is isolated to one browser on one machine.
+
+```javascript
+// Write
+localStorage.setItem("my-key", "hello");
+
+// Read
+const value = localStorage.getItem("my-key"); // "hello"
+
+// Delete
+localStorage.removeItem("my-key");
+```
+
+Everything stored is a **string**. To store objects or numbers, you convert them with `JSON.stringify` on the way in and `JSON.parse` on the way out.
+
+### Why Local Storage Can Fail
+
+Local Storage is not always available:
+
+| Situation | Why it fails |
+|---|---|
+| Server-Side Rendering (SSR) | The server has no `window` object — `localStorage` doesn't exist |
+| Private/incognito mode | Some browsers block or limit storage |
+| Storage quota exceeded | Browsers cap it at ~5MB; writes beyond that throw |
+
+This is why the `storage.ts` module wraps every call in a `try/catch` and checks `typeof window !== "undefined"` before touching the API. The game stays fully functional even if storage is unavailable — it just won't remember scores.
+
+### Lazy Initializer With Side Effects
+
+```typescript
+const [difficulty, setDifficulty] = useState<Difficulty>(
+  () => getLastDifficulty() ?? "easy"
+);
+```
+
+Passing a **function** to `useState` is called a lazy initializer. React calls it once, on the first render only.
+
+This is the right place to call `getLastDifficulty()` — it reads Local Storage once at startup, not on every render.
+
+If you wrote `useState(getLastDifficulty() ?? "easy")` without the arrow function, `getLastDifficulty()` would be called on **every render** even though React only uses the result on the first one. The function form opts out of that waste.
+
+### Optimistic State Update
+
+When the player beats their best score, two things happen:
+
+1. `saveBestScoreIfBeaten()` writes to Local Storage immediately
+2. `setBestScores(getBestScores())` reads it back and updates React state
+
+The UI doesn't wait — it updates the screen right away. This pattern is called an **optimistic update**: we assume the write succeeded and update the UI immediately. If it failed (storage unavailable), we read back null, which is no worse than before.
+
+### Derived `previousBest` in the Component
+
+`GameComplete` receives `previousBest` and `isNewBest` as separate props:
+
+```tsx
+previousBest={bestScores[difficulty]}
+isNewBest={isNewBest}
+```
+
+This separation lets `GameComplete` handle three cases cleanly:
+1. **No previous record:** don't show a comparison line
+2. **Previous record, not beaten:** show "Best: 750"
+3. **New record set:** show "New Best!" badge instead
+
+The logic stays in the component because it is display logic — which text and which colour to show. It is not game logic.
+
+---
+
 *More concepts will be added as each phase is implemented.*

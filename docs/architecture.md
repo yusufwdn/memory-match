@@ -55,18 +55,28 @@ Every data shape (Card, GameState, Difficulty) is defined in `types/game.ts`. Ch
 ## Data Flow
 
 ```
+Local Storage
+     │
+     │  getLastDifficulty(), getBestScores()  (on init)
+     ▼
 useGameState (hook)
-       │
-       │  cards, moves, matches, isComplete, elapsedTime
-       │  onFlipCard, onNewGame, onRestart
-       ▼
-   page.tsx (root)
-       │
-       ├──▶ Board.tsx ──▶ Card.tsx (×N)
-       ├──▶ MoveCounter.tsx
-       ├──▶ MatchCounter.tsx
-       ├──▶ Timer.tsx
-       └──▶ GameControls.tsx
+     │
+     │  cards, moves, matches, isComplete, elapsedTime, score
+     │  bestScores, isNewBest
+     │  onFlipCard, onNewGame, onRestart
+     ▼
+ page.tsx (root)
+     │
+     ├──▶ Board.tsx ──▶ Card.tsx (×N)
+     ├──▶ MoveCounter.tsx
+     ├──▶ MatchCounter.tsx
+     ├──▶ Timer.tsx
+     ├──▶ GameControls.tsx
+     └──▶ GameComplete.tsx (bestScores, isNewBest)
+                               │
+                               │  saveBestScoreIfBeaten()  (on game complete)
+                               ▼
+                         Local Storage
 ```
 
 Data always flows **downward**. Components never talk directly to each other.

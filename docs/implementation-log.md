@@ -308,4 +308,65 @@ score = BASE_SCORE × DIFFICULTY_MULTIPLIER[difficulty]
 | `src/components/game/GameComplete.tsx` | Displays score |
 | `src/app/page.tsx` | Passes score; guards mount with `score !== null` |
 
+---
+
+## Phase 9 — Local Storage Persistence
+
+**Date:** 2026-06-21
+
+### What Was Built
+
+- `src/types/game.ts` — added `score: number` field to `GameScore` (needed for best-score comparison)
+- `src/lib/storage.ts` — fully implemented:
+  - `isStorageAvailable()` — guards against SSR crashes and private-browsing blocks
+  - `readJSON<T>()` / `writeJSON<T>()` — safe generic wrappers around `localStorage`
+  - `getBestScores()` — reads all saved best scores (empty object if none)
+  - `saveBestScoreIfBeaten()` — saves only if the new score beats the current record; returns a boolean indicating whether the record was broken
+  - `getLastDifficulty()` / `saveLastDifficulty()` — remembers the player's last chosen difficulty
+- `src/hooks/useGameState.ts`:
+  - `difficulty` initialized from `getLastDifficulty() ?? "easy"` via lazy initializer
+  - Added `bestScores` and `isNewBest` state
+  - After the final match, calls `saveBestScoreIfBeaten()` and updates `bestScores` in state
+  - `handleNewGame` calls `saveLastDifficulty()` when switching difficulty
+  - Both `handleNewGame` and `handleRestart` reset `isNewBest`
+- `src/components/game/GameComplete.tsx`:
+  - Added `previousBest` and `isNewBest` props
+  - "New Best!" badge (yellow pill) rendered above the score when `isNewBest` is true
+  - "Best: X" comparison line shown when a previous record exists and was not beaten
+- `src/app/page.tsx` — passes `bestScores[difficulty]` and `isNewBest` to `GameComplete`
+
+### How Best Score Detection Works
+
+```
+1. Player flips the last pair → isMatch = true
+2. handleFlipCard computes prospectiveMatched (simulates the match)
+3. isGameComplete(prospectiveMatched) → true
+4. calculateScore() runs with the same inputs as the setGameState update
+5. saveBestScoreIfBeaten() compares to stored record
+6. Returns true → setBestScores + setIsNewBest(true)
+7. GameComplete renders with the "New Best!" badge
+```
+
+### Key Decisions
+
+**`storage.ts` has no React dependencies:** It is plain TypeScript and can be imported anywhere — hooks, tests, future server actions.
+
+**`saveBestScoreIfBeaten` returns a boolean:** The caller (hook) decides what to do with the result. The storage function doesn't touch React state. This separation of concerns makes each piece easier to test independently.
+
+**Score re-computed outside `setGameState` for the storage check:** `setGameState` is asynchronous — its result hasn't committed when we need to call `saveBestScoreIfBeaten`. We compute the score once synchronously using the same formula and inputs as the state update, ensuring they stay identical.
+
+**`isNewBest` is separate from `bestScores`:** Knowing the best score and knowing whether *this specific run* set a new best are two different questions. Separating them lets the UI show "New Best!" without needing to compare scores inside the component.
+
+### Files Modified
+
+| File | Change |
+|---|---|
+| `src/types/game.ts` | Added `score: number` to `GameScore` |
+| `src/lib/storage.ts` | Full implementation (was a stub) |
+| `src/hooks/useGameState.ts` | Loads last difficulty; saves best scores on completion |
+| `src/components/game/GameComplete.tsx` | New Best! badge; previous best comparison |
+| `src/app/page.tsx` | Passes `previousBest` and `isNewBest` |
+| `docs/state-management.md` | Added Local Storage section |
+| `docs/architecture.md` | Updated data flow diagram |
+
 *Future phases will append entries below this line.*

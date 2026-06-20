@@ -14,6 +14,8 @@ export default function GamePage() {
     gameState,
     difficulty,
     isLocked,
+    bestScores,
+    isNewBest,
     handleFlipCard,
     handleNewGame,
     handleRestart,
@@ -66,6 +68,8 @@ export default function GamePage() {
           totalPairs={totalPairs}
           score={gameState.score}
           difficultyLabel={config.label}
+          previousBest={bestScores[difficulty]}
+          isNewBest={isNewBest}
           onPlayAgain={handleRestart}
           onNewGame={() => handleNewGame()}
         />

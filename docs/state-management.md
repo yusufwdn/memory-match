@@ -33,8 +33,17 @@ type GameState = {
   isComplete: boolean;   // Game over flag
   startTime: number | null; // When the first flip happened
   elapsedTime: number;   // Seconds elapsed
+  score: number | null;  // null until game completes
 };
 ```
+
+Additional state in `useGameState`:
+
+| State | Type | Purpose |
+|---|---|---|
+| `difficulty` | `Difficulty` | Current difficulty; loaded from Local Storage on startup |
+| `bestScores` | `Record<Difficulty, GameScore>` | Best scores per difficulty; loaded from Local Storage |
+| `isNewBest` | `boolean` | True if the most recent game set a new personal record |
 
 ## State Transitions
 
@@ -44,9 +53,20 @@ type GameState = {
 | Second card flipped | `cards[j].isFlipped = true`, `moves + 1` |
 | Second card matches | `cards[i].isMatched = true`, `cards[j].isMatched = true`, `matches + 1` |
 | Second card doesn't match | Both cards flip back after 1 second |
-| All pairs found | `isComplete = true`, timer stops |
-| New Game clicked | All state resets, new card set generated |
-| Restart clicked | All state resets, same card set reshuffled |
+| All pairs found | `isComplete = true`, `score` calculated, timer stops, best score saved to Local Storage |
+| New Game clicked | All state resets, new card set generated, `isNewBest` cleared |
+| Restart clicked | All state resets, same card set reshuffled, `isNewBest` cleared |
+
+## Local Storage
+
+Two keys are persisted:
+
+| Key | Value | When |
+|---|---|---|
+| `memory-match:best-scores` | `BestScores` JSON | After each game completion, if new best |
+| `memory-match:last-difficulty` | `Difficulty` string | When New Game is called with a difficulty |
+
+All reads/writes go through `src/lib/storage.ts`. The wrappers catch errors silently so the game still works in private browsing mode or when storage is unavailable.
 
 ## Why Not a Global State Library?
 
