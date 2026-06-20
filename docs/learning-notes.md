@@ -311,4 +311,64 @@ Rather than duplicating the condition in two places, it's derived once at the to
 
 ---
 
+---
+
+## Phase 6 — Conditional Rendering and Component Composition
+
+### Conditional Rendering
+
+In React, you can render components conditionally using the `&&` operator:
+
+```tsx
+{isComplete && <GameComplete ... />}
+```
+
+This works because:
+- If `isComplete` is `false`, the expression short-circuits and renders nothing
+- If `isComplete` is `true`, it evaluates the right side and renders the component
+
+It is equivalent to:
+```tsx
+{isComplete ? <GameComplete ... /> : null}
+```
+
+Use `&&` when you only need the "true" branch. Use `? :` when you need both branches.
+
+### CSS Position: Fixed
+
+`position: fixed` (Tailwind: `fixed`) removes an element from the normal document flow and positions it relative to the **viewport** — the visible browser window — not its parent element.
+
+Combined with `inset-0` (which sets `top: 0; right: 0; bottom: 0; left: 0`), it creates a full-screen overlay that covers everything:
+
+```tsx
+<div className="fixed inset-0 bg-black/70">
+  {/* This covers the entire screen */}
+</div>
+```
+
+`z-50` puts it on top of everything else in the stacking order.
+
+### Component Composition
+
+`GameComplete` receives all its data as props and has no internal state. It is a "dumb" or "presentational" component:
+
+```tsx
+// GameComplete knows nothing about the game
+// It just displays what it receives and calls what it's given
+<GameComplete
+  moves={moves}
+  elapsedTime={elapsedTime}
+  onPlayAgain={handleRestart}
+/>
+```
+
+This separation makes `GameComplete` easy to:
+- Restyle without touching game logic
+- Test in isolation
+- Reuse in a different context (e.g., a "preview" mode)
+
+The pattern: **smart parents pass data down; dumb children display it and report events up.**
+
+---
+
 *More concepts will be added as each phase is implemented.*

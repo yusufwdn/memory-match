@@ -193,4 +193,38 @@ A chronological record of what was built, when, and why.
 | `src/components/game/Card.tsx` | Four visual states; `isInteractable` derived prop |
 | `src/app/page.tsx` | Passes `isLocked` to Board |
 
+---
+
+## Phase 6 — Game Completion Logic
+
+**Date:** 2026-06-21
+
+### What Was Built
+
+- `src/components/game/GameComplete.tsx` — full-screen modal overlay with trophy, stats grid (moves / time / pairs), and Play Again / New Game buttons
+- `src/app/page.tsx` — mounts `GameComplete` when `isComplete` is true; passes `isLocked || isComplete` to Board so the board freezes on completion
+
+### How It Works
+
+`isComplete` is set inside `handleFlipCard` (Phase 4) in the same state update as the final match. When React renders, `page.tsx` detects `isComplete === true` and renders `GameComplete` on top of the page via `position: fixed` (Tailwind: `fixed inset-0`).
+
+The board receives `isLocked || isComplete` — the `||` means: lock the board either while evaluating a pair, OR when the game is already over.
+
+### Key Decisions
+
+**Fixed-position overlay instead of replacing the page:** The player can still see the completed board through the semi-transparent backdrop (`bg-black/70`). This gives a sense of "you just did that" rather than an abrupt page change.
+
+**`backdrop-blur-sm`:** Softens the board behind the modal. Subtle but improves readability of the modal card.
+
+**`onPlayAgain` calls `handleRestart`:** Play Again = same difficulty, new shuffle. New Game = fresh start (will later open difficulty selection in Phase 11).
+
+**`formatDuration` inside the component:** It formats seconds for display only — presentation logic belongs in the component, not in the hook.
+
+### Files Created / Modified
+
+| File | Change |
+|---|---|
+| `src/components/game/GameComplete.tsx` | New — completion modal |
+| `src/app/page.tsx` | Mounts GameComplete; freezes board on completion |
+
 *Future phases will append entries below this line.*

@@ -2,6 +2,7 @@
 
 import Board from "@/components/game/Board";
 import GameControls from "@/components/game/GameControls";
+import GameComplete from "@/components/game/GameComplete";
 import MoveCounter from "@/components/hud/MoveCounter";
 import MatchCounter from "@/components/hud/MatchCounter";
 import Timer from "@/components/hud/Timer";
@@ -19,7 +20,8 @@ export default function GamePage() {
   } = useGameState();
 
   const { cards, moves, matches, elapsedTime, isComplete } = gameState;
-  const totalPairs = DIFFICULTY_CONFIG[difficulty].totalCards / 2;
+  const config = DIFFICULTY_CONFIG[difficulty];
+  const totalPairs = config.totalCards / 2;
 
   return (
     <main className="min-h-screen bg-gray-950 text-white flex flex-col items-center justify-center p-6 gap-8">
@@ -30,7 +32,7 @@ export default function GamePage() {
           Memory Match
         </h1>
         <p className="text-sm text-gray-500 mt-1 uppercase tracking-widest">
-          {DIFFICULTY_CONFIG[difficulty].label}
+          {config.label}
         </p>
       </div>
 
@@ -43,28 +45,30 @@ export default function GamePage() {
         <MatchCounter matches={matches} totalPairs={totalPairs} />
       </div>
 
-      {/* Board */}
+      {/* Board — frozen (isLocked=true) when game is complete */}
       <div className="bg-gray-900 rounded-2xl p-6 border border-gray-800 shadow-xl">
         <Board
           cards={cards}
           difficulty={difficulty}
-          isLocked={isLocked}
+          isLocked={isLocked || isComplete}
           onCardClick={handleFlipCard}
         />
       </div>
 
-      {/* Completion message — Phase 6 will turn this into a proper modal */}
-      {isComplete && (
-        <div className="bg-green-900 border border-green-700 rounded-2xl px-8 py-4 text-center">
-          <p className="text-green-300 font-bold text-lg">You won!</p>
-          <p className="text-green-400 text-sm mt-1">
-            {moves} moves · {elapsedTime}s
-          </p>
-        </div>
-      )}
-
       {/* Controls */}
       <GameControls onNewGame={() => handleNewGame()} onRestart={handleRestart} />
+
+      {/* Completion modal — rendered on top of everything when game is won */}
+      {isComplete && (
+        <GameComplete
+          moves={moves}
+          elapsedTime={elapsedTime}
+          totalPairs={totalPairs}
+          difficultyLabel={config.label}
+          onPlayAgain={handleRestart}
+          onNewGame={() => handleNewGame()}
+        />
+      )}
 
     </main>
   );
