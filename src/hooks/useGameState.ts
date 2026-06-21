@@ -183,9 +183,12 @@ export function useGameState() {
           }
         }
       } else {
-        // No match — schedule the flip-back after the delay
+        // No match — lock the board immediately so the player can't flip a
+        // third card while these two are still visible. The lock releases when
+        // the timeout fires and clears flippedCardIds back to [].
         clearFlipTimeout();
         const firstId = flippedCardIds[0];
+        setFlippedCardIds([firstId, cardId]);
 
         flipTimeoutRef.current = setTimeout(() => {
           setGameState((prev) => ({
