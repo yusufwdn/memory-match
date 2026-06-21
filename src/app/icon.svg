@@ -1,0 +1,14 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32">
+  <!-- Card shape — indigo background matching the game's face-up card color -->
+  <rect x="2" y="2" width="28" height="28" rx="6" fill="#4f46e5"/>
+  <!--
+    5-pointed star centered at (16,16).
+    Outer points at r=8, inner points at r=3.2.
+    Chosen because a star is the universal "special item" symbol
+    and renders crisply at 16×16 and 32×32.
+  -->
+  <polygon
+    points="16,7 17.9,13.4 23.6,13.5 19.0,17.0 20.7,22.5 16,19.2 11.3,22.5 13.0,17.0 8.4,13.5 14.1,13.4"
+    fill="white"
+  />
+</svg>
