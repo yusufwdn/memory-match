@@ -490,4 +490,161 @@ score = BASE_SCORE × DIFFICULTY_MULTIPLIER[difficulty]
 | `src/app/page.tsx` | Best score display; responsive padding |
 | All docs | Final synchronization |
 
-*All 12 phases complete.*
+---
+
+## Post-Phase — Bug Fix: Hydration Safety
+
+**Date:** 2026-06-21
+
+### Problem
+
+Two hydration mismatches were causing React to throw errors in development and produce broken HTML in production.
+
+**Mismatch 1 — localStorage:** `bestScores` was initialized by reading `localStorage` inside the `useState` lazy initializer. The server has no `window` object — it always read an empty object. The client read the real stored values. React compared the two renders, found different text ("No record yet for Easy" vs "Best (Easy): 890"), and threw.
+
+**Mismatch 2 — Math.random():** `buildInitialState()` called `generateCards()` → `shuffleArray()` → `Math.random()`. The server shuffled to one order (`[🐶, 🐭, ...]`); the client shuffled to a different order (`[🐱, 🐹, ...]`). React compared the DOM, found different emoji symbols, and threw.
+
+### Fix
+
+1. Changed `useState` initializer for `gameState` to use `buildEmptyState()` — returns `cards: []`, fully deterministic, identical on server and client.
+2. Moved all `localStorage` reads and `buildInitialState()` (with `Math.random()`) into a `useEffect` that runs after mount — client-side only, after hydration is complete.
+
+```typescript
+// Before (broken): Math.random() runs on server AND client
+const [gameState, setGameState] = useState<GameState>(() => buildInitialState("easy"));
+
+// After (correct): empty state on server, real state after mount
+const [gameState, setGameState] = useState<GameState>(buildEmptyState);
+
+useEffect(() => {
+  const difficulty = getLastDifficulty() ?? "easy";
+  setBestScores(getBestScores());
+  setDifficulty(difficulty);
+  setGameState(buildInitialState(difficulty)); // Math.random() safe here
+  setGameKey((k) => k + 1);
+}, []);
+```
+
+### Files Modified
+
+| File | Change |
+|---|---|
+| `src/hooks/useGameState.ts` | `buildEmptyState` as initial state; all browser APIs moved to `useEffect` |
+
+---
+
+## Post-Phase — Bug Fix: Board Lock
+
+**Date:** 2026-06-21
+
+### Problem
+
+A player could flip a third card while two unmatched cards were still visible (during the 1-second flip-back delay). The board appeared locked visually (cards were dimmed) but clicks still registered.
+
+### Root Cause
+
+In the no-match branch of `handleFlipCard`, `setFlippedCardIds([firstId, cardId])` was never called. The array stayed at length 1, so `isLocked` (`flippedCardIds.length === 2`) was always `false` during the delay. The guard at the top of `handleFlipCard` (`if (flippedCardIds.length === 2) return`) never fired.
+
+### Fix
+
+Added `setFlippedCardIds([firstId, cardId])` immediately before scheduling the flip-back timeout in the no-match branch.
+
+```typescript
+} else {
+  // Lock the board immediately — set BOTH IDs before the timeout starts
+  clearFlipTimeout();
+  const firstId = flippedCardIds[0];
+  setFlippedCardIds([firstId, cardId]); // ← this line was missing
+  flipTimeoutRef.current = setTimeout(() => {
+    ...
+    setFlippedCardIds([]);
+  }, FLIP_BACK_DELAY_MS);
+}
+```
+
+### Files Modified
+
+| File | Change |
+|---|---|
+| `src/hooks/useGameState.ts` | Added `setFlippedCardIds([firstId, cardId])` in the no-match branch |
+
+---
+
+## Post-Phase — Feature: Lobby Screen
+
+**Date:** 2026-06-21
+
+### What Was Built
+
+- `src/components/game/LobbyScreen.tsx` — full-viewport entry screen:
+  - Three difficulty cards (green / yellow / red for easy / medium / hard) showing pair count, grid dimensions, and the player's current best score for that difficulty
+  - "Start Game" button calls `onStart(selectedDifficulty)`
+  - `position: fixed, inset-0` so the screen fills the full viewport
+- `src/app/page.tsx` — replaced `isSelectingDifficulty` modal pattern with explicit `gamePhase: "lobby" | "playing"` state:
+  - `AnimatePresence mode="wait"` handles transitions between screens
+  - "New Game" returns to lobby; "Restart" reshuffles in place without going to lobby
+  - `GameComplete` is gated on `gamePhase === "playing"` to prevent it appearing over the lobby
+
+### Why Replace DifficultyModal
+
+The old pattern showed the board immediately on load (before the player had chosen a difficulty), then opened a modal on top. The lobby pattern hides the board entirely until the player is ready. This produces a cleaner first impression and eliminates the awkward "board behind a modal" state.
+
+### Key Decisions
+
+**`gamePhase` in `page.tsx`, not the hook:** Whether to show the lobby is a screen-routing decision — it has nothing to do with game logic. The hook manages cards, moves, and scores. The page manages which view is visible.
+
+**`AnimatePresence mode="wait"`:** The outgoing screen plays its exit animation before the incoming screen mounts. Without `mode="wait"`, both screens would animate simultaneously and overlap.
+
+### Files Created / Modified
+
+| File | Change |
+|---|---|
+| `src/components/game/LobbyScreen.tsx` | New — lobby screen with difficulty selector |
+| `src/components/game/DifficultyModal.tsx` | Deleted — replaced by LobbyScreen |
+| `src/app/page.tsx` | `gamePhase` state; AnimatePresence transitions; lobby/playing routing |
+
+---
+
+## Post-Phase — Feature: Lobby Animations
+
+**Date:** 2026-06-21
+
+### What Was Built
+
+Two animation layers added to `LobbyScreen.tsx`:
+
+**1. Floating background cards** — 8 semi-transparent `?` cards scattered around the full viewport. Each bobs up and down at a different speed and delay using `y: [0, -14, 0]`. Positions are fixed constants (no `Math.random()` — SSR-safe). `pointer-events-none` so they never intercept clicks.
+
+**2. Flip preview row** — 4 mini 3D cards above the title that flip one at a time in a continuous loop. Each card uses the same 3D flip structure as the real game cards. The cycling is driven by `useEffect` + `setTimeout` rather than Framer Motion's `repeat: Infinity`.
+
+### Why setTimeout Cycling Instead of Framer Motion Repeat
+
+Framer Motion's `delay` only applies to the first animation cycle. After the first loop, all four cards would flip simultaneously — the stagger is lost. Manual `setTimeout` cycling advances `activeIndex` explicitly, so the stagger persists on every iteration.
+
+### Why Fixed Positions
+
+`Math.random()` in a component body would be called during SSR and again on the client, producing different positions → hydration mismatch. Fixed constant positions are identical on both.
+
+### Files Modified
+
+| File | Change |
+|---|---|
+| `src/components/game/LobbyScreen.tsx` | Added `FlipPreview` component, `FloatingCard` component, `FLOATING_CARDS` constant |
+
+---
+
+## Post-Phase — Feature: Custom Identity (Favicon + Title)
+
+**Date:** 2026-06-21
+
+### What Was Built
+
+- `src/app/icon.svg` — custom favicon: indigo rounded square (`#4f46e5`, matching the game's card face color) with a white 5-pointed star centered inside. Next.js App Router automatically picks up any `icon.svg` in the `app/` directory and serves it as the site favicon — no configuration needed.
+- `src/app/layout.tsx` — updated `metadata` object: `title: "Memory Match"`, `description: "A classic card-matching memory game. Flip cards and find all the pairs!"`
+
+### Files Modified
+
+| File | Change |
+|---|---|
+| `src/app/icon.svg` | New — custom memory card favicon |
+| `src/app/layout.tsx` | Updated metadata title and description |

@@ -41,9 +41,40 @@ Additional state in `useGameState`:
 
 | State | Type | Purpose |
 |---|---|---|
-| `difficulty` | `Difficulty` | Current difficulty; loaded from Local Storage on startup |
-| `bestScores` | `Record<Difficulty, GameScore>` | Best scores per difficulty; loaded from Local Storage |
+| `difficulty` | `Difficulty` | Current difficulty; loaded from Local Storage after mount |
+| `bestScores` | `Record<Difficulty, GameScore>` | Best scores per difficulty; loaded from Local Storage after mount |
 | `isNewBest` | `boolean` | True if the most recent game set a new personal record |
+| `gameKey` | `number` | Incremented on new game/restart to remount Board and replay stagger animation |
+| `flippedCardIds` | `string[]` | IDs of the 0–2 cards currently face-up but not yet resolved |
+
+Additional state in `page.tsx` (UI state — not in the hook):
+
+| State | Type | Purpose |
+|---|---|---|
+| `gamePhase` | `"lobby" \| "playing"` | Which screen is visible. Kept in the page because the hook manages game logic, not screen routing |
+
+### SSR-Safe Initialization
+
+Next.js renders components on the server before sending HTML to the browser. This means `useState` initializers run on both the server and the client. Two things must never happen in a `useState` initializer:
+
+- **`Math.random()`** — shuffles differently on server vs. client → hydration mismatch on card symbols
+- **`localStorage`** — doesn't exist on the server → crash or wrong value
+
+The solution:
+1. `useState` initializers use deterministic empty values (`buildEmptyState()` returns `cards: []`)
+2. A `useEffect` runs after mount (client-only), reads `localStorage`, generates the shuffled deck, and updates state
+
+```typescript
+// Server and client both render the same empty state — no mismatch
+const [gameState, setGameState] = useState<GameState>(buildEmptyState);
+
+// After hydration, safe to call Math.random() and read localStorage
+useEffect(() => {
+  const difficulty = getLastDifficulty() ?? "easy";
+  setGameState(buildInitialState(difficulty)); // Math.random() runs here, client-only
+  setBestScores(getBestScores());              // localStorage read here, client-only
+}, []);
+```
 
 ## State Transitions
 

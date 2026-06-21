@@ -26,13 +26,16 @@ The player sees a grid of face-down cards. They flip two at a time trying to fin
 
 ## Core Features
 
+- Lobby screen — difficulty picker shown before every game (floating card animations + flip preview)
 - Card generation and shuffling
-- Card flip interaction
+- Card flip interaction with board lock (prevents third card flip during evaluation)
 - Match detection (two identical symbols = a match)
 - Move counter
 - Timer (starts on first flip)
-- Best score storage per difficulty
+- Best score storage per difficulty (persisted in Local Storage)
 - Three difficulty levels (easy / medium / hard)
+- SSR-safe initialization — no hydration mismatches
+- Keyboard navigation and screen reader support
 
 ## Development Phases
 

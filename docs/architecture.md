@@ -5,32 +5,34 @@
 ```
 src/
 ├── app/                    ← Next.js App Router
-│   ├── layout.tsx          ← Root layout: fonts, metadata, global styles
-│   └── page.tsx            ← Game shell: calls useGameState, renders components
+│   ├── icon.svg            ← Custom favicon (memory card icon — auto-registered by Next.js)
+│   ├── layout.tsx          ← Root layout: fonts, metadata ("Memory Match"), global styles
+│   └── page.tsx            ← Game shell: gamePhase state, AnimatePresence, renders screens
 │
 ├── components/
 │   ├── game/
 │   │   ├── Board.tsx         ← Card grid layout (stagger entrance animation)
-│   │   ├── Card.tsx          ← Individual card (3D flip, matched pop)
-│   │   ├── DifficultyModal.tsx ← Difficulty picker shown on "New Game"
-│   │   └── GameControls.tsx  ← New Game and Restart buttons
-│   │
+│   │   ├── Card.tsx          ← Individual card (3D flip, matched pop, keyboard nav)
+│   │   ├── GameComplete.tsx  ← Completion modal (score, new-best badge, play again)
+│   │   ├── GameControls.tsx  ← New Game and Restart buttons (shown during play)
+│   │   └── LobbyScreen.tsx   ← Full-viewport lobby: difficulty picker, floating card
+│   │                           animations, flip preview row
 │   ├── hud/
-│   │   ├── MoveCounter.tsx ← Shows move count
-│   │   ├── MatchCounter.tsx← Shows matches found / total pairs
+│   │   ├── MoveCounter.tsx ← Shows move count (aria-live)
+│   │   ├── MatchCounter.tsx← Shows matches found / total pairs (aria-live)
 │   │   └── Timer.tsx       ← Shows elapsed time
 │   │
 │   └── ui/
 │       └── Button.tsx      ← Reusable button (primary / secondary / danger)
 │
 ├── hooks/
-│   ├── useGameState.ts     ← All core game state and logic
+│   ├── useGameState.ts     ← All core game state and logic (SSR-safe initialization)
 │   └── useTimer.ts         ← Timer tick logic (isolated from game state)
 │
 ├── lib/
 │   ├── cardUtils.ts        ← Card generation, deck shuffling (pure functions)
 │   ├── gameLogic.ts        ← Match detection, score calculation (pure functions)
-│   └── storage.ts          ← Local Storage read/write wrappers
+│   └── storage.ts          ← Local Storage read/write wrappers (SSR-safe)
 │
 ├── types/
 │   └── game.ts             ← TypeScript types: Card, GameState, Difficulty, Score
@@ -58,26 +60,34 @@ Every data shape (Card, GameState, Difficulty) is defined in `types/game.ts`. Ch
 ```
 Local Storage
      │
-     │  getLastDifficulty(), getBestScores()  (on init)
+     │  getLastDifficulty(), getBestScores()  (useEffect after mount — SSR-safe)
      ▼
 useGameState (hook)
      │
      │  cards, moves, matches, isComplete, elapsedTime, score
-     │  bestScores, isNewBest
-     │  onFlipCard, onNewGame, onRestart
+     │  difficulty, bestScores, isNewBest, gameKey, isLocked
+     │  handleFlipCard, handleNewGame, handleRestart
      ▼
  page.tsx (root)
      │
-     ├──▶ Board.tsx ──▶ Card.tsx (×N)
-     ├──▶ MoveCounter.tsx
-     ├──▶ MatchCounter.tsx
-     ├──▶ Timer.tsx
-     ├──▶ GameControls.tsx
-     └──▶ GameComplete.tsx (bestScores, isNewBest)
-                               │
-                               │  saveBestScoreIfBeaten()  (on game complete)
-                               ▼
-                         Local Storage
+     │  gamePhase: "lobby" | "playing"
+     │
+     ├── gamePhase === "lobby"
+     │    └──▶ LobbyScreen.tsx  (initialDifficulty, bestScores, onStart)
+     │
+     └── gamePhase === "playing"
+          ├──▶ MoveCounter.tsx
+          ├──▶ MatchCounter.tsx
+          ├──▶ Timer.tsx
+          ├──▶ Board.tsx ──▶ Card.tsx (×N)
+          ├──▶ GameControls.tsx
+          └──▶ GameComplete.tsx (bestScores, isNewBest)
+                                    │
+                                    │  saveBestScoreIfBeaten()  (on game complete)
+                                    ▼
+                              Local Storage
 ```
 
 Data always flows **downward**. Components never talk directly to each other.
+
+`gamePhase` is UI state — it lives in `page.tsx`, not the hook. The hook manages game logic; which screen is visible is a presentation decision.

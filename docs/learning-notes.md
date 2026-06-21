@@ -741,4 +741,134 @@ The Board receives a `key` prop that changes on every new game. When React sees 
 
 ---
 
-*All 12 phases complete.*
+---
+
+## Post-Phase — SSR and Hydration
+
+### What Is Server-Side Rendering (SSR)?
+
+Next.js renders your React components **on the server** before sending anything to the browser. This means the user sees content immediately — the browser doesn't have to wait for JavaScript to run first.
+
+The HTML the server sends looks like:
+
+```html
+<div class="grid">
+  <div>?</div>
+  <div>?</div>
+  ...
+</div>
+```
+
+Then JavaScript loads in the browser and React "hydrates" the page — it attaches event listeners and takes over. For this to work, React requires that **the HTML the server sent matches exactly what React would render on the client.**
+
+### What Is a Hydration Mismatch?
+
+A hydration mismatch happens when the server renders something different from what the client renders. React compares them, finds a difference, and throws a warning (or error).
+
+Two common causes in this project:
+
+**`Math.random()` in a state initializer:**
+```typescript
+// PROBLEM — server shuffles to [🐶,🐭,...] client shuffles to [🐱,🐹,...]
+const [gameState, setGameState] = useState(() => buildInitialState("easy"));
+```
+`Math.random()` produces different results every time it's called. Server call ≠ client call → different card symbols → mismatch.
+
+**`localStorage` in a state initializer:**
+```typescript
+// PROBLEM — server has no window object; localStorage doesn't exist
+const [bestScores, setBestScores] = useState(() => getBestScores());
+```
+On the server, `localStorage` is undefined. The server renders "No record yet", the client renders "Best: 890" → mismatch.
+
+### The Fix: buildEmptyState + useEffect
+
+The rule is simple: **the first render must be identical on server and client.** Start with deterministic empty values. Load real data after mount.
+
+```typescript
+// Step 1: deterministic empty state — server and client agree
+const [gameState, setGameState] = useState<GameState>(buildEmptyState);
+const [bestScores, setBestScores] = useState<Record<string, GameScore>>({});
+
+// Step 2: useEffect runs client-side only, after hydration is complete
+useEffect(() => {
+  const difficulty = getLastDifficulty() ?? "easy";
+  setBestScores(getBestScores());            // localStorage — safe here
+  setGameState(buildInitialState(difficulty)); // Math.random() — safe here
+}, []);
+```
+
+`useEffect` never runs on the server. By the time it fires on the client, React has already hydrated the DOM — so any state update it makes is a normal re-render, not a hydration conflict.
+
+### The Same Rule Applies to Constants
+
+Even static values can cause mismatches if they use `Math.random()`:
+
+```typescript
+// PROBLEM — random positions differ between server and client
+const positions = Array.from({ length: 8 }, () => ({
+  left: `${Math.random() * 100}%`,
+}));
+```
+
+The fix: use fixed constant values defined at module level (outside the component), so both server and client see the same thing.
+
+```typescript
+// CORRECT — constants are evaluated once at import time, same everywhere
+const FLOATING_CARDS = [
+  { left: "6%", top: "10%", ... },
+  { left: "83%", top: "7%", ... },
+];
+```
+
+---
+
+## Post-Phase — AnimatePresence and Screen Transitions
+
+### What Is AnimatePresence?
+
+`AnimatePresence` is a Framer Motion component that enables **exit animations** for components that are removed from the React tree.
+
+Normally, when React removes a component (because a condition becomes false), it disappears instantly. `AnimatePresence` detects the removal, plays the component's `exit` animation first, and only then removes it from the DOM.
+
+```tsx
+<AnimatePresence>
+  {isVisible && (
+    <motion.div
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
+      exit={{ opacity: 0 }} // ← plays before removal
+    >
+      Hello
+    </motion.div>
+  )}
+</AnimatePresence>
+```
+
+### `mode="wait"` for Screen Transitions
+
+This game uses `AnimatePresence mode="wait"` to transition between the lobby and the playing screen:
+
+```tsx
+<AnimatePresence mode="wait">
+  {gamePhase === "lobby" ? (
+    <LobbyScreen key="lobby" ... />
+  ) : (
+    <motion.div key="playing" ... />
+  )}
+</AnimatePresence>
+```
+
+`mode="wait"` means: **finish the exit animation of the old screen before starting the entrance animation of the new screen.** Without it, both screens would animate simultaneously and overlap visually.
+
+### Why `key` Matters Here
+
+When you swap between two components inside `AnimatePresence`, you must give each one a unique, stable `key`. Framer Motion uses the key to tell whether a component is "the same one animating" or "a different one entering/exiting."
+
+Without keys, React might reuse the existing DOM node instead of unmounting the old component and mounting the new one — and no transition would play.
+
+### Lobby: `position: fixed` and Opacity Propagation
+
+`LobbyScreen` uses `position: fixed, inset-0` to fill the full viewport (background floating cards need to spread outside the page's normal content area).
+
+A useful CSS rule: when a parent's `opacity` animates to `0`, **all children inherit the fade** — even `position: fixed` children, as long as they are inside the parent in the DOM. This means the lobby exit animation (`opacity: 0`) cleanly fades out the floating cards and the main content panel together, without needing separate exit animations on each child.

@@ -6,15 +6,27 @@
 App loads
     │
     ▼
-page.tsx renders
+page.tsx renders  (gamePhase = "lobby")
     │
     ▼
 useGameState initializes
-    │  - reads last difficulty from Local Storage (defaults to "easy")
-    │  - loads best scores from Local Storage
-    │  - generates cards for that difficulty
-    │  - all cards face-down
-    │  - moves = 0, matches = 0, isComplete = false
+    │  - server render: empty card array, difficulty = "easy" (SSR-safe, no localStorage)
+    │  - after mount (useEffect): reads last difficulty + best scores from Local Storage
+    │  - generates shuffled card deck (Math.random() runs client-side only)
+    │
+    ▼
+LobbyScreen renders
+    │  - floating card background animation plays
+    │  - flip preview row cycles through symbols
+    │  - player's previous best scores shown on each difficulty option
+    │
+    ▼
+Player selects difficulty and clicks "Start Game"
+    │  - handleNewGame(difficulty) called
+    │  - gamePhase = "playing"
+    │
+    ▼
+Playing screen fades in (AnimatePresence transition)
     │
     ▼
 Player sees the board (cards entrance stagger animation plays)
@@ -55,9 +67,9 @@ Player clicks Restart
     └──▶ Back to start
 
 Player clicks New Game
-    │  - DifficultyModal opens
-    │  - Player selects Easy / Medium / Hard
-    │  - board resets with new difficulty
+    │  - gamePhase = "lobby"
+    │  - LobbyScreen renders with current best scores
+    │  - Player selects difficulty and clicks Start
     └──▶ Back to start
 ```
 
